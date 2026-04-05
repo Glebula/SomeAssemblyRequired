@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { QUESTIONS } from '../../data/questions';
 import { SCREENS } from '../../hooks/useGameState';
 import { useTimer } from '../../hooks/useTimer';
@@ -19,6 +19,7 @@ export default function QuestionsScreen({ state, goTo, update }) {
   const [flash, setFlash] = useState(null); // 'correct' | 'wrong'
   const [totalBits, setTotalBits] = useState(0);
   const [done, setDone] = useState(false);
+  const accumulatedBitsRef = useRef(0);
 
   const q = questions[currentIdx];
 
@@ -54,7 +55,8 @@ export default function QuestionsScreen({ state, goTo, update }) {
       setFlash(correct ? 'correct' : 'wrong');
     }
 
-    setTotalBits(prev => prev + bitsEarned);
+    accumulatedBitsRef.current += bitsEarned;
+    setTotalBits(accumulatedBitsRef.current);
 
     setTimeout(() => {
       if (currentIdx < questions.length - 1) {
@@ -63,8 +65,8 @@ export default function QuestionsScreen({ state, goTo, update }) {
         timer.reset(QUESTION_TIME);
         setCurrentIdx(prev => prev + 1);
       } else {
-        // Done
-        update({ bitsFromQuestions: totalBits + bitsEarned, bits: state.bits + totalBits + bitsEarned });
+        // Done — use ref to get the true accumulated total (avoids stale closure)
+        update({ bitsFromQuestions: accumulatedBitsRef.current, bits: state.bits + accumulatedBitsRef.current });
         setDone(true);
       }
     }, 1800);

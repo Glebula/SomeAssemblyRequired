@@ -165,6 +165,8 @@ export default function SimulationScreen({ state, goTo, update }) {
   const [finalScore, setFinalScore] = useState(null);
   const [glitchOccurred, setGlitchOccurred] = useState(false);
   const intervalRef = useRef(null);
+  const timeoutRef = useRef(null);
+  const animRef = useRef(null);
 
   const activeCombos = getActiveCombos(equippedPartIds, mission?.category);
   const activeConflicts = getActiveConflicts(equippedPartIds);
@@ -200,7 +202,7 @@ export default function SimulationScreen({ state, goTo, update }) {
       if (idx >= s.length) {
         clearInterval(intervalRef.current);
         // Calculate final score
-        setTimeout(() => {
+        timeoutRef.current = setTimeout(() => {
           const effectiveMission = state.mysteryMissionRequirements
             ? { ...mission, requirements: state.mysteryMissionRequirements }
             : mission;
@@ -214,16 +216,23 @@ export default function SimulationScreen({ state, goTo, update }) {
       }
     }, stepDuration);
 
-    return () => clearInterval(intervalRef.current);
+    return () => {
+      clearInterval(intervalRef.current);
+      clearTimeout(timeoutRef.current);
+      clearInterval(animRef.current);
+    };
   }, []);
 
   function animateScore(target) {
     let current = 0;
     const increment = target / 30;
-    const anim = setInterval(() => {
+    animRef.current = setInterval(() => {
       current = Math.min(current + increment, target);
       setScoreAnim(Math.round(current));
-      if (current >= target) clearInterval(anim);
+      if (current >= target) {
+        clearInterval(animRef.current);
+        animRef.current = null;
+      }
     }, 50);
   }
 

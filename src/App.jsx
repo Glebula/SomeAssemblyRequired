@@ -1,3 +1,4 @@
+import { Component } from 'react';
 import { useGameState, SCREENS } from './hooks/useGameState';
 import HomeScreen from './components/screens/HomeScreen';
 import CodeEntry from './components/screens/CodeEntry';
@@ -104,6 +105,7 @@ export default function App() {
             updateSettings={updateSettings}
             enableDevMode={enableDevMode}
             disableDevMode={disableDevMode}
+            setMission={setMission}
           />
         );
 
@@ -123,9 +125,60 @@ export default function App() {
   };
 
   return (
-    <>
+    <ErrorBoundary>
       {renderScreen()}
       {devMode && <DevBadge />}
-    </>
+    </ErrorBoundary>
   );
+}
+
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          minHeight: '100vh', background: '#0a0e1a',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24
+        }}>
+          <div style={{ maxWidth: 480, textAlign: 'center' }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>💥</div>
+            <h2 style={{
+              fontFamily: 'Space Grotesk, sans-serif', fontSize: 24, fontWeight: 700,
+              color: '#ef4444', marginBottom: 16, marginTop: 0
+            }}>
+              Something went wrong
+            </h2>
+            <p style={{
+              color: '#8892b0', fontFamily: 'Space Grotesk, sans-serif',
+              fontSize: 14, marginBottom: 8, lineHeight: 1.5
+            }}>
+              {this.state.error?.message || 'An unexpected error occurred.'}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                padding: '12px 28px', background: 'linear-gradient(135deg, #00b4ff, #0080cc)',
+                border: 'none', borderRadius: 10, color: 'white',
+                fontSize: 15, fontWeight: 700, cursor: 'pointer',
+                fontFamily: 'Space Grotesk, sans-serif',
+                boxShadow: '0 4px 20px rgba(0,180,255,0.3)'
+              }}
+            >
+              Reload Game
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }

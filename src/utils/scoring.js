@@ -124,7 +124,7 @@ export function getPowerBudget(equippedPartIds) {
 
 export function calculateScore(equippedPartIds, mission, difficulty = 'bronze', curveballPenalty = 0, glitchOccurred = false) {
   if (!mission || !mission.requirements) {
-    return { total: 0, breakdown: {}, grade: 'failed' };
+    return { total: 0, breakdown: {}, grade: 'failed', activeCombos: [], activeConflicts: [] };
   }
 
   const activeCombos = getActiveCombos(equippedPartIds, mission.category);

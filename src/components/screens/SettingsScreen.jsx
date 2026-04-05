@@ -5,7 +5,7 @@ import { MISSIONS } from '../../data/missions';
 
 const DEV_PASSWORD = 'SAR-DEV-2026';
 
-export default function SettingsScreen({ state, goTo, updateSettings, enableDevMode, disableDevMode }) {
+export default function SettingsScreen({ state, goTo, updateSettings, enableDevMode, disableDevMode, setMission }) {
   const { settings, devMode } = state;
   const [devPassword, setDevPassword] = useState('');
   const [devError, setDevError] = useState('');
@@ -178,7 +178,7 @@ export default function SettingsScreen({ state, goTo, updateSettings, enableDevM
             )}
 
             {/* Dev tools */}
-            {devMode && <DevToolsPanel settings={settings} updateSettings={updateSettings} goTo={goTo} />}
+            {devMode && <DevToolsPanel settings={settings} updateSettings={updateSettings} goTo={goTo} setMission={setMission} />}
           </SettingsCard>
         </div>
 
@@ -235,12 +235,37 @@ function SettingsCard({ children }) {
   );
 }
 
-function DevToolsPanel({ settings, updateSettings, goTo }) {
+function DevToolsPanel({ settings, updateSettings, goTo, setMission }) {
+  function startFreePlay() {
+    const randomMission = MISSIONS[Math.floor(Math.random() * MISSIONS.length)];
+    setMission(randomMission.code, randomMission, 'bronze');
+    goTo(SCREENS.BUILD);
+  }
   return (
     <div style={{ marginTop: 20 }}>
       <div style={{ height: 1, background: '#2a3060', marginBottom: 16 }} />
       <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: '#ff6b35', letterSpacing: '0.1em', marginBottom: 16 }}>
         DEV TOOLS
+      </div>
+
+      {/* Free Play */}
+      <div style={{ marginBottom: 16 }}>
+        <button
+          onClick={startFreePlay}
+          style={{
+            width: '100%', padding: '12px 16px',
+            background: 'linear-gradient(135deg, rgba(0,180,255,0.2), rgba(0,240,255,0.1))',
+            border: '1px solid rgba(0,180,255,0.5)', borderRadius: 8,
+            color: '#00f0ff', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+            fontFamily: 'Space Grotesk, sans-serif',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+          }}
+        >
+          🎲 Free Play — Random Mission → Build
+        </button>
+        <p style={{ color: '#8892b0', fontSize: 11, fontFamily: 'Space Grotesk, sans-serif', margin: '6px 0 0', textAlign: 'center' }}>
+          Auto-assigns a random mission and jumps straight to the build screen
+        </p>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
