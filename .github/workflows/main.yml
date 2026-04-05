@@ -3,7 +3,7 @@ name: Deploy Vite site to GitHub Pages
 on:
   push:
     branches:
-      - claude/int-react-vite-FPBp4
+      - claude/init-react-vite-FPBp4
   workflow_dispatch:
 
 permissions:
