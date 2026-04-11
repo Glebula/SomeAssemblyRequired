@@ -237,8 +237,10 @@ function SettingsCard({ children }) {
 
 function DevToolsPanel({ settings, updateSettings, goTo, setMission }) {
   function startFreePlay() {
-    const randomMission = MISSIONS[Math.floor(Math.random() * MISSIONS.length)];
-    setMission(randomMission.code, randomMission, 'bronze');
+    const missionKeys = Object.keys(MISSIONS);
+    const randomKey = missionKeys[Math.floor(Math.random() * missionKeys.length)];
+    const randomMission = { ...MISSIONS[randomKey], code: randomKey };
+    setMission(randomKey, randomMission, 'bronze');
     goTo(SCREENS.BUILD);
   }
   return (

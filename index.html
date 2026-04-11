@@ -12,10 +12,21 @@
   </head>
   <body>
     <div id="root">
-      <div id="app-loading" style="min-height:100vh;background:#0a0e1a;display:flex;align-items:center;justify-content:center;font-family:monospace;color:#8892b0;">
-        Loading...
+      <div id="app-loading" style="min-height:100vh;background:#0a0e1a;display:flex;align-items:center;justify-content:center;font-family:monospace;color:#8892b0;flex-direction:column;gap:12px;">
+        <div>Loading...</div>
+        <div id="err" style="color:#ef4444;font-size:12px;max-width:500px;text-align:center;padding:0 16px;"></div>
       </div>
     </div>
+    <script>
+      window.addEventListener('error', function(e) {
+        var el = document.getElementById('err');
+        if (el) el.textContent = 'JS Error: ' + (e.message || 'unknown') + (e.filename ? ' @ ' + e.filename : '');
+      });
+      window.addEventListener('unhandledrejection', function(e) {
+        var el = document.getElementById('err');
+        if (el) el.textContent = 'Promise Error: ' + (e.reason?.message || e.reason || 'unknown');
+      });
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
