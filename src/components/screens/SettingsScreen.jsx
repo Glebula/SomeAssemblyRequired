@@ -3,7 +3,7 @@ import { SCREENS } from '../../hooks/useGameState';
 import { CURVEBALLS } from '../../data/curveballs';
 import { MISSIONS } from '../../data/missions';
 
-const DEV_PASSWORD = 'SAR-DEV-2026';
+const DEV_PASSWORD = 'mittpc2026';
 
 export default function SettingsScreen({ state, goTo, updateSettings, enableDevMode, disableDevMode, setMission }) {
   const { settings, devMode } = state;
@@ -12,7 +12,7 @@ export default function SettingsScreen({ state, goTo, updateSettings, enableDevM
   const [howToPlayOpen, setHowToPlayOpen] = useState(false);
 
   function handleDevSubmit() {
-    if (devPassword === DEV_PASSWORD) {
+    if (devPassword.toLowerCase() === DEV_PASSWORD) {
       enableDevMode();
       setDevError('');
     } else {
