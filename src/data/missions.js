@@ -176,7 +176,7 @@ export const MISSIONS = [
       'What if strong ocean currents push your robot off course?',
       'How does it handle running low on power when deep underwater?',
     ],
-    requirements: { precision: 2, strength: 3, perception: 4, mobility: 4, durability: 4, adaptability: 4, communication: 1, social: 1 },
+    requirements: { precision: 2, strength: 3, perception: 4, mobility: 4, durability: 4, adaptability: 4, communication: 1, social: 0 },
     topStats: ['perception', 'mobility', 'durability'],
   },
   {
@@ -191,7 +191,7 @@ export const MISSIONS = [
       'With no signal, how does it decide whether to fight a small fire or retreat?',
       'How does it cover large areas efficiently with limited power?',
     ],
-    requirements: { precision: 1, strength: 2, perception: 5, mobility: 5, durability: 4, adaptability: 4, communication: 1, social: 1 },
+    requirements: { precision: 1, strength: 2, perception: 5, mobility: 5, durability: 4, adaptability: 4, communication: 1, social: 0 },
     topStats: ['perception', 'mobility', 'adaptability'],
   },
   {
@@ -206,7 +206,7 @@ export const MISSIONS = [
       'What if something unexpected happens mid-surgery?',
       'How does it communicate with the human surgeon without being distracting?',
     ],
-    requirements: { precision: 5, strength: 1, perception: 5, mobility: 1, durability: 1, adaptability: 4, communication: 3, social: 2 },
+    requirements: { precision: 5, strength: 1, perception: 5, mobility: 1, durability: 1, adaptability: 4, communication: 3, social: 1 },
     topStats: ['precision', 'perception', 'adaptability'],
   },
   {
@@ -221,7 +221,7 @@ export const MISSIONS = [
       'What if it detects a defective part in the supply chain?',
       'How does it work safely near human workers without slowing down?',
     ],
-    requirements: { precision: 4, strength: 4, perception: 3, mobility: 2, durability: 4, adaptability: 2, communication: 1, social: 2 },
+    requirements: { precision: 4, strength: 4, perception: 3, mobility: 2, durability: 4, adaptability: 2, communication: 1, social: 1 },
     topStats: ['precision', 'strength', 'durability'],
   },
   {
@@ -251,7 +251,7 @@ export const MISSIONS = [
       'What if the bomb has a motion sensor — how does your robot approach without triggering it?',
       'Should your robot attempt to disarm, or is controlled detonation safer?',
     ],
-    requirements: { precision: 5, strength: 1, perception: 5, mobility: 3, durability: 4, adaptability: 5, communication: 2, social: 1 },
+    requirements: { precision: 5, strength: 1, perception: 5, mobility: 3, durability: 4, adaptability: 5, communication: 2, social: 0 },
     topStats: ['precision', 'perception', 'adaptability'],
   },
   {
@@ -266,7 +266,7 @@ export const MISSIONS = [
       'At 3,000 meters depth, how does it handle the extreme pressure and cold?',
       'With no signal to the surface, how does it make decisions about the repair on its own?',
     ],
-    requirements: { precision: 5, strength: 2, perception: 4, mobility: 3, durability: 5, adaptability: 5, communication: 1, social: 1 },
+    requirements: { precision: 5, strength: 2, perception: 4, mobility: 3, durability: 5, adaptability: 5, communication: 0, social: 0 },
     topStats: ['precision', 'durability', 'adaptability'],
   },
   {
