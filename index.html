@@ -18,6 +18,13 @@
       </div>
     </div>
     <script>
+      (function() {
+        var protocolWarning = document.getElementById('err');
+        if (window.location.protocol === 'file:' && protocolWarning) {
+          protocolWarning.textContent = 'This app cannot run from file://. Start a server with "npm run dev" or serve the dist/ folder.';
+        }
+      })();
+
       window.addEventListener('error', function(e) {
         var el = document.getElementById('err');
         if (el) el.textContent = 'JS Error: ' + (e.message || 'unknown') + (e.filename ? ' @ ' + e.filename : '');
@@ -26,6 +33,15 @@
         var el = document.getElementById('err');
         if (el) el.textContent = 'Promise Error: ' + (e.reason?.message || e.reason || 'unknown');
       });
+
+      // If React hasn't mounted after a few seconds, surface guidance instead of a silent loader.
+      setTimeout(function() {
+        var loader = document.getElementById('app-loading');
+        var el = document.getElementById('err');
+        if (loader && loader.isConnected && el && !el.textContent) {
+          el.textContent = 'App failed to start. Check browser console and network tab for /src/main.jsx or /assets/*.js load failures.';
+        }
+      }, 4000);
     </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
