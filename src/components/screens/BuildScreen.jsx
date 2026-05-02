@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { DndContext, DragOverlay, useDroppable } from '@dnd-kit/core';
+import { DndContext, DragOverlay, useDroppable, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
 import { SCREENS } from '../../hooks/useGameState';
 import { PARTS_BY_ID, SINGLE_EQUIP_CATEGORIES } from '../../data/parts';
 import { useTimer, formatTime } from '../../hooks/useTimer';
@@ -174,6 +174,8 @@ export default function BuildScreen({ state, goTo, equipPart, unequipPart, addTo
     }
   }
 
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+
   const timerEnabled = !settings.unlimitedTime;
   const { timeLeft } = useTimer(BUILD_SECONDS, {
     enabled: timerEnabled,
@@ -218,7 +220,7 @@ export default function BuildScreen({ state, goTo, equipPart, unequipPart, addTo
   const topStats = displayMission?.topStats || [];
 
   return (
-    <DndContext onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div style={{ minHeight: '100vh', background: '#0a0e1a', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Top Bar */}
         <div style={{
@@ -335,6 +337,7 @@ export default function BuildScreen({ state, goTo, equipPart, unequipPart, addTo
             bits={bits}
             settings={settings}
             onPartClick={setSelectedPart}
+            onSell={handleUnequip}
           />
         </div>
 

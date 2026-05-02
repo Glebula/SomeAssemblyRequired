@@ -2,47 +2,73 @@ import { useState } from 'react';
 import { PARTS, PART_CATEGORIES, PARTS_BY_ID, SINGLE_EQUIP_CATEGORIES } from '../../data/parts';
 import { useDraggable } from '@dnd-kit/core';
 
-function DraggablePart({ part, isEquipped, canAfford, categoryLocked, onClick }) {
+function DraggablePart({ part, isEquipped, canAfford, categoryLocked, onClick, onSell }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: `part-${part.id}` });
 
   const dimmed = !isEquipped && (!canAfford || categoryLocked);
 
   return (
-    <button
-      ref={setNodeRef}
-      {...listeners}
-      {...attributes}
-      onClick={() => onClick(part)}
+    <div
       style={{
         flex: '0 0 auto',
         width: 88,
-        background: isEquipped ? 'rgba(0,180,255,0.12)' : '#1a1f3a',
-        border: `1.5px solid ${isEquipped ? 'rgba(0,180,255,0.6)' : dimmed ? '#1a2040' : '#2a3060'}`,
-        borderRadius: 12,
-        padding: '10px 6px 8px',
-        cursor: 'pointer',
+        position: 'relative',
         opacity: isDragging ? 0.4 : dimmed ? 0.4 : 1,
         transform: transform ? `translate(${transform.x}px,${transform.y}px)` : undefined,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: 4,
         touchAction: 'none',
       }}
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
     >
-      <PartIcon part={part} size={36} dim={dimmed} />
-      <div style={{ fontSize: 10, color: dimmed ? '#3a4060' : '#8892b0', textAlign: 'center', lineHeight: 1.2, fontFamily: 'Space Grotesk, sans-serif', fontWeight: 500 }}>
-        {part.name}
-      </div>
-      <div style={{
-        background: isEquipped ? 'rgba(0,180,255,0.2)' : 'rgba(255,255,255,0.06)',
-        color: isEquipped ? '#00b4ff' : dimmed ? '#2a3060' : '#8892b0',
-        borderRadius: 10, padding: '1px 7px',
-        fontSize: 10, fontFamily: 'JetBrains Mono, monospace', fontWeight: 700,
-      }}>
-        {isEquipped ? '✓' : `${part.cost}b`}
-      </div>
-    </button>
+      <button
+        onClick={() => onClick(part)}
+        style={{
+          width: '100%',
+          background: isEquipped ? 'rgba(0,180,255,0.12)' : '#1a1f3a',
+          border: `1.5px solid ${isEquipped ? 'rgba(0,180,255,0.6)' : dimmed ? '#1a2040' : '#2a3060'}`,
+          borderRadius: 12,
+          padding: '10px 6px 8px',
+          cursor: 'pointer',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 4,
+        }}
+      >
+        <PartIcon part={part} size={36} dim={dimmed} />
+        <div style={{ fontSize: 10, color: dimmed ? '#3a4060' : '#8892b0', textAlign: 'center', lineHeight: 1.2, fontFamily: 'Space Grotesk, sans-serif', fontWeight: 500 }}>
+          {part.name}
+        </div>
+        <div style={{
+          background: isEquipped ? 'rgba(0,180,255,0.2)' : 'rgba(255,255,255,0.06)',
+          color: isEquipped ? '#00b4ff' : dimmed ? '#2a3060' : '#8892b0',
+          borderRadius: 10, padding: '1px 7px',
+          fontSize: 10, fontFamily: 'JetBrains Mono, monospace', fontWeight: 700,
+        }}>
+          {isEquipped ? '✓' : `${part.cost}b`}
+        </div>
+      </button>
+
+      {/* Sell button — only on equipped parts */}
+      {isEquipped && (
+        <button
+          onPointerDown={e => e.stopPropagation()}
+          onClick={e => { e.stopPropagation(); onSell(part.id); }}
+          style={{
+            position: 'absolute', top: -6, right: -6,
+            width: 22, height: 22, borderRadius: '50%',
+            background: '#ef4444', border: '2px solid #0a0e1a',
+            color: 'white', fontSize: 13, lineHeight: '18px',
+            cursor: 'pointer', fontWeight: 700, padding: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+          title="Sell back (refunds Bits)"
+        >
+          ×
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -99,7 +125,7 @@ const CATEGORY_COLORS = {
   ai: '#a855f7', communication: '#22c55e', power: '#eab308', specialty: '#00b4ff',
 };
 
-export default function PartsTray({ equippedPartIds, bits, settings, onPartClick }) {
+export default function PartsTray({ equippedPartIds, bits, settings, onPartClick, onSell }) {
   const [activeCategory, setActiveCategory] = useState('frame');
   const partIdSet = new Set(equippedPartIds);
 
@@ -157,6 +183,7 @@ export default function PartsTray({ equippedPartIds, bits, settings, onPartClick
             canAfford={settings?.unlimitedBits || bits >= part.cost}
             categoryLocked={isLocked(part)}
             onClick={onPartClick}
+            onSell={onSell}
           />
         ))}
       </div>
