@@ -1,9 +1,31 @@
 import { PARTS_BY_ID } from '../../data/parts';
 
-const STAT_ICONS = { precision:'🎯', strength:'💪', perception:'👁️', mobility:'⚡', durability:'🛡️', adaptability:'🧠', communication:'📡', social:'🤝' };
+const SPECIAL_RULE_LABELS = {
+  maxModules:            v => `⚠️ Max ${v} total modules`,
+  waterproof:            () => '💧 Works underwater',
+  uselessInDarkSmoke:    () => '🚫 Useless in darkness or smoke',
+  bonusInDarkSmoke:      () => '✅ Bonus in darkness and smoke',
+  overridesVisibilityCap:() => '👁️ Sees through visibility limits',
+  glitchRisk:            v => `⚠️ ${Math.round(v * 100)}% glitch risk during simulation`,
+  uncannyWithoutEmotion: () => '😶 Creepy without an Emotion Display',
+  requiresArms:          () => '🦾 Requires arms to function',
+  uselessIndoors:        () => '🚫 Useless indoors or underground',
+  bannedInSterile:       () => '🚫 Banned in sterile environments',
+  fragile:               () => '💥 Easily damaged by impacts',
+  onlyEnvironmentalJobs: () => '🌿 Only useful in environmental missions',
+  onlyMedicalJobs:       () => '🏥 Only useful in medical missions',
+  repairsOnePart:        () => '🔧 Repairs one broken part (single use)',
+  terrainBonus:          () => '⛰️ Extra stable on rough terrain',
+  heatImmune:            () => '🔥 Immune to extreme heat',
+  onlyEmergencyMissions: () => '🚨 Only useful in rescue/emergency missions',
+};
 
 export default function PartInfoPopup({ part, onAdd, onRemove, isEquipped, canAfford, onClose }) {
   if (!part) return null;
+
+  const specialTraits = Object.entries(part.specialRules || {})
+    .map(([key, val]) => SPECIAL_RULE_LABELS[key]?.(val))
+    .filter(Boolean);
 
   return (
     <div
@@ -47,45 +69,34 @@ export default function PartInfoPopup({ part, onAdd, onRemove, isEquipped, canAf
 
         <p style={{ color: '#8892b0', fontSize: 14, margin: '0 0 16px', lineHeight: 1.5 }}>{part.description}</p>
 
-        {/* Stats */}
-        <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
-          {Object.keys(part.benefits || {}).length > 0 && (
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#34d399', marginBottom: 6, letterSpacing: '0.1em' }}>GOOD AT</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                {Object.entries(part.benefits).map(([s, v]) => v !== 0 && (
-                  <span key={s} style={{
-                    background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.3)',
-                    borderRadius: 6, padding: '2px 8px', fontSize: 12, color: '#34d399',
-                  }}>
-                    {STAT_ICONS[s]} +{v} {s}
-                  </span>
-                ))}
-              </div>
+        {/* Special traits */}
+        {specialTraits.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#fbbf24', marginBottom: 8, letterSpacing: '0.1em', fontFamily: 'JetBrains Mono, monospace' }}>SPECIAL TRAITS</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {specialTraits.map((trait, i) => (
+                <div key={i} style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', borderRadius: 8, padding: '7px 12px', fontSize: 13, color: '#e8eaf6' }}>
+                  {trait}
+                </div>
+              ))}
             </div>
-          )}
-          {Object.keys(part.tradeoffs || {}).length > 0 && (
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#ef4444', marginBottom: 6, letterSpacing: '0.1em' }}>WEAK AT</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                {Object.entries(part.tradeoffs).map(([s, v]) => (
-                  <span key={s} style={{
-                    background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
-                    borderRadius: 6, padding: '2px 8px', fontSize: 12, color: '#ef4444',
-                  }}>
-                    {STAT_ICONS[s]} {v} {s}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Combo hint */}
         {part.combosWith?.length > 0 && (
-          <div style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.25)', borderRadius: 8, padding: '8px 12px', marginBottom: 12 }}>
-            <span style={{ color: '#fbbf24', fontSize: 13 }}>
+          <div style={{ background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.25)', borderRadius: 8, padding: '8px 12px', marginBottom: 12 }}>
+            <span style={{ color: '#34d399', fontSize: 13 }}>
               ⚡ Combo: <strong>{part.comboName}</strong> — {part.comboEffect}
+            </span>
+          </div>
+        )}
+
+        {/* Conflict hint */}
+        {part.conflictsWith?.length > 0 && (
+          <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 8, padding: '8px 12px', marginBottom: 12 }}>
+            <span style={{ color: '#ef4444', fontSize: 13 }}>
+              ⚠️ Conflict: <strong>{part.conflictName}</strong> — {part.conflictEffect}
             </span>
           </div>
         )}
