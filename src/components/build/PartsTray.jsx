@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { PARTS, CATEGORY_LABELS, CATEGORY_COLORS, SINGLE_SLOT_CATEGORIES } from '../../data/parts';
-import PartTraitLine from './PartTraitLine';
 
 const CATEGORIES = ['frame', 'arms', 'sensors', 'ai', 'communication', 'power', 'specialty'];
 
@@ -159,8 +158,22 @@ function DraggablePart({ part, bits, isEquipped, isSingleSlotTaken, onClick, dev
         {part.name}
       </div>
 
-      {/* Quick trait + flavor */}
-      <PartTraitLine part={part} />
+      {/* Short description */}
+      <div style={{
+        marginTop: 6,
+        minHeight: 28,
+        fontSize: 10,
+        color: '#cbd5e1',
+        fontFamily: 'Space Grotesk, sans-serif',
+        lineHeight: 1.2,
+        textAlign: 'center',
+        overflow: 'hidden',
+        display: '-webkit-box',
+        WebkitLineClamp: 2,
+        WebkitBoxOrient: 'vertical'
+      }}>
+        {getShortDescription(part)}
+      </div>
 
       {/* Cost badge */}
       <div style={{
@@ -198,4 +211,9 @@ function getPartEmoji(part) {
     35: '🥷', 36: '📻', 37: '🛡️', 38: '🚀', 39: '🎯', 40: '😄'
   };
   return map[part.id] || '⚙️';
+}
+
+function getShortDescription(part) {
+  if (part.id === 1) return 'Lightweight and fast. Can only hold 5 modules.';
+  return part.description || 'Utility robot module.';
 }
