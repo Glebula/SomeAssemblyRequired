@@ -43,24 +43,18 @@ function MissionPeekPanel({ mission, isHidden, stats, adjustedReqs, onClose }) {
 
         <p style={{ color: '#8892b0', fontSize: 13, margin: '0 0 16px', lineHeight: 1.6 }}>{mission.description}</p>
 
-        {/* Requirements */}
-        {adjustedReqs && !isHidden && (
+        {/* Top 3 stats this mission needs */}
+        {mission.topStats?.length > 0 && !isHidden && (
           <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#e8eaf6', marginBottom: 8, fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.1em' }}>REQUIREMENTS</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-              {Object.entries(adjustedReqs).map(([stat, req]) => {
-                if (!req) return null;
-                const actual = stats?.[stat] || 0;
-                const met = actual >= req;
-                return (
-                  <div key={stat} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: met ? 'rgba(52,211,153,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${met ? 'rgba(52,211,153,0.25)' : 'rgba(239,68,68,0.25)'}`, borderRadius: 8, padding: '6px 10px' }}>
-                    <span style={{ fontSize: 13, color: '#c8cfe0' }}>{STAT_ICONS[stat]} {stat}</span>
-                    <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 13, fontWeight: 700, color: met ? '#34d399' : '#ef4444' }}>
-                      {actual}<span style={{ color: '#4a5568' }}>/{req}</span>
-                    </span>
-                  </div>
-                );
-              })}
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#e8eaf6', marginBottom: 10, fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.1em' }}>WHAT THIS MISSION NEEDS</div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              {mission.topStats.slice(0, 3).map((stat, i) => (
+                <div key={stat} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, background: i === 0 ? 'rgba(0,180,255,0.1)' : 'rgba(255,255,255,0.04)', border: `1px solid ${i === 0 ? 'rgba(0,180,255,0.35)' : '#2a3060'}`, borderRadius: 12, padding: '14px 8px' }}>
+                  <span style={{ fontSize: 26 }}>{STAT_ICONS[stat]}</span>
+                  <span style={{ fontSize: 12, color: '#e8eaf6', fontFamily: 'Space Grotesk, sans-serif', fontWeight: 600, textAlign: 'center', textTransform: 'capitalize' }}>{stat}</span>
+                  {i === 0 && <span style={{ fontSize: 9, color: '#00b4ff', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.08em' }}>TOP PRIORITY</span>}
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -334,6 +328,16 @@ export default function BuildScreen({ state, goTo, equipPart, unequipPart, addTo
             )}
           </Workbench>
 
+          {/* Done building button */}
+          <div style={{ borderTop: '1px solid #1a2040', padding: '8px 16px', background: '#0d1225', display: 'flex', justifyContent: 'flex-end', flexShrink: 0 }}>
+            <button
+              onClick={handleTimerComplete}
+              style={{ padding: '7px 18px', background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.35)', borderRadius: 8, color: '#34d399', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'Space Grotesk, sans-serif' }}
+            >
+              Done building →
+            </button>
+          </div>
+
           {/* Parts tray */}
           <PartsTray
             equippedPartIds={equippedPartIds}
@@ -345,21 +349,6 @@ export default function BuildScreen({ state, goTo, equipPart, unequipPart, addTo
           />
         </div>
 
-        {/* Dev skip button */}
-        {devMode && (
-          <button
-            onClick={() => goTo(settings.skipCurveball ? SCREENS.QUESTION : SCREENS.CURVEBALL)}
-            style={{
-              position: 'fixed', bottom: 120, right: 16,
-              background: 'rgba(255,107,53,0.9)', color: 'white',
-              border: 'none', borderRadius: 10, padding: '8px 14px',
-              fontSize: 12, fontWeight: 700, cursor: 'pointer',
-              fontFamily: 'JetBrains Mono, monospace', zIndex: 200,
-            }}
-          >
-            Skip Build →
-          </button>
-        )}
       </div>
 
       {/* Mission peek panel */}
