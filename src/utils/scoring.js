@@ -143,20 +143,33 @@ export function calculateScore(equippedPartIds, mission, statModifiers = {}, cur
   const adjustedStats = applyEnvironmentToStats(stats, equippedPartIds, mission);
   const adjustedReqs = applyEnvironmentToRequirements(mission.requirements, mission);
 
+  // Only stats the mission actually requires contribute to the score.
+  // Irrelevant stats (req=0) are ignored so players aren't rewarded/penalised
+  // for things the mission doesn't care about.
+  const relevantStats = ALL_STATS.filter(s => (adjustedReqs[s] || 0) > 0);
+  const numRelevant = relevantStats.length || 1;
+  const pointsPerStat = 100 / numRelevant;
+
   let total = 0;
   const breakdown = {};
 
   for (const stat of ALL_STATS) {
     const requirement = adjustedReqs[stat] || 0;
     const actual = adjustedStats[stat] || 0;
-    let statScore;
+    let statScore = 0;
 
-    if (actual >= requirement) {
-      const overBonus = Math.min((actual - requirement) * 0.5, 2);
-      statScore = 12.5 + overBonus;
+    if (requirement === 0) {
+      // Not required by this mission — no contribution either way
+      statScore = 0;
+    } else if (actual >= requirement) {
+      // Met: 80% base score, bonus up to 100% for significantly exceeding
+      const over = actual - requirement;
+      const bonusFraction = Math.min(over / requirement, 1);
+      statScore = pointsPerStat * (0.8 + bonusFraction * 0.2);
     } else {
-      const gap = requirement - actual;
-      statScore = Math.max(12.5 - gap * 4, 0);
+      // Missed: 0–60% proportional to how close you got
+      const fraction = actual / requirement;
+      statScore = pointsPerStat * 0.6 * fraction;
     }
 
     total += statScore;
