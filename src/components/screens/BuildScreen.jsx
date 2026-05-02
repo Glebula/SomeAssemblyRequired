@@ -13,7 +13,81 @@ import Timer from '../common/Timer';
 import ToastContainer from '../common/Toast';
 
 const STAT_ICONS = { precision:'🎯', strength:'💪', perception:'👁️', mobility:'⚡', durability:'🛡️', adaptability:'🧠', communication:'📡', social:'🤝' };
+const TIER_COLORS = { standard: '#34d399', advanced: '#00b4ff', extreme: '#ef4444', random: '#a855f7' };
 const BUILD_SECONDS = 120;
+
+function MissionPeekPanel({ mission, isHidden, stats, adjustedReqs, onClose }) {
+  if (!mission) return null;
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 500, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
+      onClick={onClose}
+    >
+      <div
+        style={{ background: '#12172e', border: '1px solid #2a3060', borderRadius: '20px 20px 0 0', padding: '24px 20px 32px', width: '100%', maxWidth: 500, animation: 'slideUp 0.3s ease', maxHeight: '80vh', overflowY: 'auto' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+          <div>
+            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: '#8892b0', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 4 }}>
+              Current Mission
+            </div>
+            <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#e8eaf6' }}>{mission.title}</h3>
+          </div>
+          {mission.tier && (
+            <span style={{ background: `${TIER_COLORS[mission.tier]}22`, color: TIER_COLORS[mission.tier], border: `1px solid ${TIER_COLORS[mission.tier]}55`, borderRadius: 20, padding: '4px 10px', fontSize: 11, fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, textTransform: 'uppercase', flexShrink: 0 }}>
+              {mission.tier}
+            </span>
+          )}
+        </div>
+
+        <p style={{ color: '#8892b0', fontSize: 13, margin: '0 0 16px', lineHeight: 1.6 }}>{mission.description}</p>
+
+        {/* Requirements */}
+        {adjustedReqs && !isHidden && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#e8eaf6', marginBottom: 8, fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.1em' }}>REQUIREMENTS</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+              {Object.entries(adjustedReqs).map(([stat, req]) => {
+                if (!req) return null;
+                const actual = stats?.[stat] || 0;
+                const met = actual >= req;
+                return (
+                  <div key={stat} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: met ? 'rgba(52,211,153,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${met ? 'rgba(52,211,153,0.25)' : 'rgba(239,68,68,0.25)'}`, borderRadius: 8, padding: '6px 10px' }}>
+                    <span style={{ fontSize: 13, color: '#c8cfe0' }}>{STAT_ICONS[stat]} {stat}</span>
+                    <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 13, fontWeight: 700, color: met ? '#34d399' : '#ef4444' }}>
+                      {actual}<span style={{ color: '#4a5568' }}>/{req}</span>
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Objectives */}
+        {mission.objectives?.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#e8eaf6', marginBottom: 8, fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.1em' }}>OBJECTIVES</div>
+            {mission.objectives.map((obj, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
+                <span style={{ color: '#00b4ff', fontSize: 13, flexShrink: 0 }}>▸</span>
+                <span style={{ color: '#8892b0', fontSize: 13, lineHeight: 1.5 }}>{obj}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <button
+          onClick={onClose}
+          style={{ width: '100%', padding: '14px', background: 'rgba(255,255,255,0.05)', border: '1px solid #2a3060', borderRadius: 12, color: '#8892b0', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'Space Grotesk, sans-serif' }}
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function Workbench({ children, equippedPartIds, onPartClick }) {
   const { isOver, setNodeRef } = useDroppable({ id: 'workbench' });
@@ -49,6 +123,7 @@ function Workbench({ children, equippedPartIds, onPartClick }) {
 export default function BuildScreen({ state, goTo, equipPart, unequipPart, addToast, revealMysteryMission, update }) {
   const { mission, bits, equippedPartIds, statModifiers, requirementOverrides, settings, devMode } = state;
   const [showStats, setShowStats] = useState(false);
+  const [showMission, setShowMission] = useState(false);
   const [selectedPart, setSelectedPart] = useState(null);
   const [mysteryRevealed, setMysteryRevealed] = useState(false);
   const [effectiveMission, setEffectiveMission] = useState(mission);
@@ -155,7 +230,10 @@ export default function BuildScreen({ state, goTo, equipPart, unequipPart, addTo
         }}>
           <Timer timeLeft={timerEnabled ? timeLeft : BUILD_SECONDS} totalSeconds={BUILD_SECONDS} />
 
-          <div style={{ textAlign: 'center', flex: 1 }}>
+          <button
+            onClick={() => setShowMission(true)}
+            style={{ textAlign: 'center', flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 8 }}
+          >
             <div style={{ color: '#8892b0', fontSize: 10, fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
               {isMystery && !mysteryRevealed ? '???' : (displayMission?.title || 'Unknown')}
             </div>
@@ -172,7 +250,8 @@ export default function BuildScreen({ state, goTo, equipPart, unequipPart, addTo
                 );
               })}
             </div>
-          </div>
+            <div style={{ color: '#3a4060', fontSize: 9, marginTop: 2, fontFamily: 'JetBrains Mono, monospace' }}>tap to view</div>
+          </button>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ textAlign: 'right' }}>
@@ -275,6 +354,17 @@ export default function BuildScreen({ state, goTo, equipPart, unequipPart, addTo
           </button>
         )}
       </div>
+
+      {/* Mission peek panel */}
+      {showMission && (
+        <MissionPeekPanel
+          mission={displayMission}
+          isHidden={isMystery && !mysteryRevealed}
+          stats={stats}
+          adjustedReqs={adjustedReqs}
+          onClose={() => setShowMission(false)}
+        />
+      )}
 
       {/* Part info popup */}
       {selectedPart && (
