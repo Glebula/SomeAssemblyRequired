@@ -32,7 +32,7 @@ const DIFFICULTY_COLORS = { bronze: '#cd7f32', silver: '#a8a9ad', gold: '#ffd700
 const DIFFICULTY_BITS = { bronze: 80, silver: 65, gold: 50 };
 
 export default function MissionBriefing({ state, goTo }) {
-  const { mission, missionCode, difficulty, bits } = state;
+  const { mission, difficulty, bits } = state;
   if (!mission) return null;
 
   const env = ENVIRONMENTS[mission.environment] || ENVIRONMENTS['normal'];
@@ -48,7 +48,7 @@ export default function MissionBriefing({ state, goTo }) {
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
           <button
-            onClick={() => goTo(SCREENS.CODE_ENTRY)}
+            onClick={() => goTo(SCREENS.MISSION_DRAW)}
             style={{
               background: 'transparent', border: 'none', color: '#8892b0',
               cursor: 'pointer', fontSize: 14, fontFamily: 'Space Grotesk, sans-serif',
@@ -81,9 +81,6 @@ export default function MissionBriefing({ state, goTo }) {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
               <div>
-                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: '#8892b0', marginBottom: 6, letterSpacing: '0.1em' }}>
-                  {missionCode}
-                </div>
                 <h1 style={{
                   fontFamily: 'Space Grotesk, sans-serif', fontSize: 'clamp(24px, 4vw, 36px)',
                   fontWeight: 700, color: '#e8eaf6', margin: 0

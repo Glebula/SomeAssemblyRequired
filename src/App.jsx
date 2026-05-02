@@ -1,7 +1,7 @@
 import { Component } from 'react';
 import { useGameState, SCREENS } from './hooks/useGameState';
 import HomeScreen from './components/screens/HomeScreen';
-import CodeEntry from './components/screens/CodeEntry';
+import MissionDraw from './components/screens/MissionDraw';
 import MissionBriefing from './components/screens/MissionBriefing';
 import BuildScreen from './components/screens/BuildScreen';
 import CurveballScreen from './components/screens/CurveballScreen';
@@ -35,13 +35,12 @@ export default function App() {
       case SCREENS.HOME:
         return <HomeScreen goTo={goTo} />;
 
-      case SCREENS.CODE_ENTRY:
+      case SCREENS.MISSION_DRAW:
         return (
-          <CodeEntry
+          <MissionDraw
+            state={state}
             goTo={goTo}
             setMission={setMission}
-            devMode={devMode}
-            settings={state.settings}
           />
         );
 

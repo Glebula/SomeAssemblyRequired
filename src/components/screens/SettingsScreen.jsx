@@ -335,7 +335,7 @@ function DevToolsPanel({ settings, updateSettings, goTo, setMission }) {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {[
             { label: 'Home', screen: SCREENS.HOME },
-            { label: 'Code Entry', screen: SCREENS.CODE_ENTRY },
+            { label: 'Mission Draw', screen: SCREENS.MISSION_DRAW },
             { label: 'Briefing', screen: SCREENS.MISSION_BRIEFING },
             { label: 'Build', screen: SCREENS.BUILD },
             { label: 'Curveball', screen: SCREENS.CURVEBALL },

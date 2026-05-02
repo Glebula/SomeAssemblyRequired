@@ -3,7 +3,7 @@ import { MISSIONS } from '../data/missions';
 
 export const SCREENS = {
   HOME: 'home',
-  CODE_ENTRY: 'code-entry',
+  MISSION_DRAW: 'mission-draw',
   MISSION_BRIEFING: 'mission-briefing',
   BUILD: 'build',
   CURVEBALL: 'curveball',
@@ -17,7 +17,7 @@ export const SCREENS = {
 const INITIAL_STATE = {
   screen: SCREENS.HOME,
   mission: null,
-  missionCode: null,
+  missionCode: null, // internal key e.g. 'MSN-1019', not shown to players
   difficulty: null,
   bits: 80,
   equippedPartIds: [],
@@ -69,18 +69,18 @@ export function useGameState() {
       devMode: prev.devMode,
       settings: prev.settings,
       leaderboard: prev.leaderboard,
-      screen: SCREENS.CODE_ENTRY
+      screen: SCREENS.MISSION_DRAW
     }));
   }, []);
 
-  const setMission = useCallback((code, mission, difficulty) => {
+  const setMission = useCallback((code, mission, difficulty, redrawPenalty = 0) => {
     const difficultyBits = { bronze: 80, silver: 65, gold: 50 }[difficulty] || 80;
     setState(prev => ({
       ...prev,
       missionCode: code,
       mission,
       difficulty,
-      bits: difficultyBits,
+      bits: Math.max(10, difficultyBits - redrawPenalty),
       equippedPartIds: [],
       curveballPenalty: 0,
       questionsAnswered: [],

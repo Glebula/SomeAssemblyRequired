@@ -97,7 +97,7 @@ export default function HomeScreen({ goTo }) {
 
         {/* PLAY button — the hero CTA */}
         <button
-          onClick={() => goTo(SCREENS.CODE_ENTRY)}
+          onClick={() => goTo(SCREENS.MISSION_DRAW)}
           style={{
             background: 'linear-gradient(135deg, #00b4ff, #0080cc)',
             color: 'white',
