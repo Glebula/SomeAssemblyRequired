@@ -1,197 +1,165 @@
 import { useState } from 'react';
+import { PARTS, PART_CATEGORIES, PARTS_BY_ID, SINGLE_EQUIP_CATEGORIES } from '../../data/parts';
 import { useDraggable } from '@dnd-kit/core';
-import { PARTS, CATEGORY_LABELS, CATEGORY_COLORS, SINGLE_SLOT_CATEGORIES } from '../../data/parts';
 
-const CATEGORIES = ['frame', 'arms', 'sensors', 'ai', 'communication', 'power', 'specialty'];
+function DraggablePart({ part, isEquipped, canAfford, categoryLocked, onClick }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: `part-${part.id}` });
 
-export default function PartsTray({ bits, equippedPartIds, onPartClick, devMode, settings }) {
-  const [activeCategory, setActiveCategory] = useState('frame');
-
-  const filteredParts = PARTS.filter(p => p.category === activeCategory);
+  const dimmed = !isEquipped && (!canAfford || categoryLocked);
 
   return (
-    <div style={{
-      background: '#12172e',
-      borderTop: '1px solid #2a3060',
-      display: 'flex', flexDirection: 'column'
-    }}>
-      {/* Category tabs */}
+    <button
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      onClick={() => onClick(part)}
+      style={{
+        flex: '0 0 auto',
+        width: 88,
+        background: isEquipped ? 'rgba(0,180,255,0.12)' : '#1a1f3a',
+        border: `1.5px solid ${isEquipped ? 'rgba(0,180,255,0.6)' : dimmed ? '#1a2040' : '#2a3060'}`,
+        borderRadius: 12,
+        padding: '10px 6px 8px',
+        cursor: 'pointer',
+        opacity: isDragging ? 0.4 : dimmed ? 0.4 : 1,
+        transform: transform ? `translate(${transform.x}px,${transform.y}px)` : undefined,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 4,
+        touchAction: 'none',
+      }}
+    >
+      <PartIcon part={part} size={36} dim={dimmed} />
+      <div style={{ fontSize: 10, color: dimmed ? '#3a4060' : '#8892b0', textAlign: 'center', lineHeight: 1.2, fontFamily: 'Space Grotesk, sans-serif', fontWeight: 500 }}>
+        {part.name}
+      </div>
       <div style={{
-        display: 'flex', overflowX: 'auto', gap: 0,
-        borderBottom: '1px solid #2a3060',
-        scrollbarWidth: 'none', msOverflowStyle: 'none'
+        background: isEquipped ? 'rgba(0,180,255,0.2)' : 'rgba(255,255,255,0.06)',
+        color: isEquipped ? '#00b4ff' : dimmed ? '#2a3060' : '#8892b0',
+        borderRadius: 10, padding: '1px 7px',
+        fontSize: 10, fontFamily: 'JetBrains Mono, monospace', fontWeight: 700,
       }}>
-        {CATEGORIES.map(cat => {
-          const color = CATEGORY_COLORS[cat];
-          const isActive = activeCategory === cat;
-          const hasEquipped = equippedPartIds.some(id => {
-            const p = PARTS.find(p => p.id === id);
-            return p?.category === cat;
-          });
+        {isEquipped ? '✓' : `${part.cost}b`}
+      </div>
+    </button>
+  );
+}
 
+function PartIcon({ part, size = 32, dim }) {
+  const color = dim ? '#2a3060' : CATEGORY_COLORS[part.category] || '#00b4ff';
+  const s = size;
+  return (
+    <svg width={s} height={s} viewBox="0 0 32 32">
+      {part.category === 'frame' && (
+        <rect x={4} y={6} width={24} height={20} rx={3} fill="none" stroke={color} strokeWidth={2.5} />
+      )}
+      {part.category === 'arms' && (
+        <g>
+          <rect x={3} y={8} width={8} height={16} rx={3} fill={color} opacity={0.8} />
+          <rect x={21} y={8} width={8} height={16} rx={3} fill={color} opacity={0.8} />
+          <path d={part.id === 7 ? 'M3 24 L1 30 M8 24 L6 30' : 'M5 24 L3 30 M9 24 L11 30'} stroke={color} strokeWidth={2.5} strokeLinecap="round" />
+          <path d={part.id === 7 ? 'M21 24 L19 30 M26 24 L24 30' : 'M21 24 L19 30 M25 24 L27 30'} stroke={color} strokeWidth={2.5} strokeLinecap="round" />
+        </g>
+      )}
+      {part.category === 'sensors' && (
+        <circle cx={16} cy={16} r={10} fill="none" stroke={color} strokeWidth={2.5} />
+      )}
+      {part.category === 'ai' && (
+        <g>
+          <circle cx={16} cy={16} r={9} fill={`${color}30`} stroke={color} strokeWidth={2} />
+          <circle cx={16} cy={16} r={5} fill={color} opacity={0.8} />
+        </g>
+      )}
+      {part.category === 'communication' && (
+        <g>
+          <path d="M16 22 L16 8 M10 14 L16 8 L22 14" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+          <circle cx={16} cy={26} r={2} fill={color} />
+        </g>
+      )}
+      {part.category === 'power' && (
+        <g>
+          <rect x={8} y={6} width={16} height={20} rx={3} fill="none" stroke={color} strokeWidth={2} />
+          <rect x={12} y={3} width={8} height={4} rx={2} fill={color} />
+          <path d="M14 12 L12 17 L16 17 L13 24 L20 16 L16 16 L18 12Z" fill={color} />
+        </g>
+      )}
+      {part.category === 'specialty' && (
+        <g>
+          <circle cx={16} cy={16} r={10} fill="none" stroke={color} strokeWidth={2} />
+          <text x={16} y={21} textAnchor="middle" fill={color} fontSize={12}>★</text>
+        </g>
+      )}
+    </svg>
+  );
+}
+
+const CATEGORY_COLORS = {
+  frame: '#1d4ed8', arms: '#f97316', sensors: '#06b6d4',
+  ai: '#a855f7', communication: '#22c55e', power: '#eab308', specialty: '#00b4ff',
+};
+
+export default function PartsTray({ equippedPartIds, bits, settings, onPartClick }) {
+  const [activeCategory, setActiveCategory] = useState('frame');
+  const partIdSet = new Set(equippedPartIds);
+
+  const categoryParts = PARTS.filter(p => p.category === activeCategory);
+
+  function isLocked(part) {
+    if (partIdSet.has(part.id)) return false;
+    if (SINGLE_EQUIP_CATEGORIES.has(part.category)) {
+      return equippedPartIds.some(id => PARTS_BY_ID[id]?.category === part.category);
+    }
+    return false;
+  }
+
+  return (
+    <div style={{ background: '#0d1225', borderTop: '1px solid #1a2040' }}>
+      {/* Category tabs */}
+      <div style={{ display: 'flex', overflowX: 'auto', borderBottom: '1px solid #1a2040', scrollbarWidth: 'none' }}>
+        {PART_CATEGORIES.map(cat => {
+          const hasEquipped = equippedPartIds.some(id => PARTS_BY_ID[id]?.category === cat.id);
           return (
             <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
+              key={cat.id}
+              onClick={() => setActiveCategory(cat.id)}
               style={{
                 flex: '0 0 auto',
                 padding: '10px 14px',
-                background: isActive ? `${color}15` : 'transparent',
+                background: activeCategory === cat.id ? '#1a1f3a' : 'transparent',
                 border: 'none',
-                borderBottom: `2px solid ${isActive ? color : 'transparent'}`,
-                color: isActive ? color : '#8892b0',
-                fontSize: 12, fontWeight: 700,
+                borderBottom: activeCategory === cat.id ? '2px solid #00b4ff' : '2px solid transparent',
+                color: activeCategory === cat.id ? '#00b4ff' : '#8892b0',
+                fontSize: 12,
+                fontWeight: 600,
                 cursor: 'pointer',
                 fontFamily: 'Space Grotesk, sans-serif',
-                transition: 'all 0.2s',
                 whiteSpace: 'nowrap',
-                position: 'relative'
+                position: 'relative',
               }}
             >
-              {CATEGORY_LABELS[cat]}
+              {cat.emoji} {cat.label}
               {hasEquipped && (
-                <span style={{
-                  position: 'absolute', top: 4, right: 4,
-                  width: 6, height: 6, borderRadius: '50%',
-                  background: color
-                }} />
+                <span style={{ position: 'absolute', top: 6, right: 6, width: 6, height: 6, borderRadius: '50%', background: '#00b4ff' }} />
               )}
             </button>
           );
         })}
       </div>
 
-      {/* Parts grid */}
-      <div style={{
-        display: 'flex',
-        overflowX: 'auto',
-        padding: '12px',
-        gap: 10,
-        minHeight: 150,
-        scrollbarWidth: 'thin'
-      }}>
-        {filteredParts.map(part => (
+      {/* Parts strip */}
+      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '12px 12px 16px', scrollbarWidth: 'none' }}>
+        {categoryParts.map(part => (
           <DraggablePart
             key={part.id}
             part={part}
-            bits={bits}
-            isEquipped={equippedPartIds.includes(part.id)}
-            isSingleSlotTaken={
-              SINGLE_SLOT_CATEGORIES.includes(part.category) &&
-              equippedPartIds.some(id => {
-                const ep = PARTS.find(p => p.id === id);
-                return ep?.category === part.category && ep.id !== part.id;
-              })
-            }
-            onClick={() => onPartClick(part)}
-            devMode={devMode}
-            settings={settings}
+            isEquipped={partIdSet.has(part.id)}
+            canAfford={settings?.unlimitedBits || bits >= part.cost}
+            categoryLocked={isLocked(part)}
+            onClick={onPartClick}
           />
         ))}
       </div>
     </div>
   );
-}
-
-function DraggablePart({ part, bits, isEquipped, isSingleSlotTaken, onClick, devMode, settings }) {
-  const canAfford = (settings?.unlimitedBits && devMode) || bits >= part.cost;
-  const disabled = (!canAfford && !isEquipped) || (isSingleSlotTaken && !isEquipped);
-
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: `tray-${part.id}`,
-    data: { part, fromTray: true },
-    disabled
-  });
-
-  const color = CATEGORY_COLORS[part.category] || '#00b4ff';
-
-  const style = {
-    position: 'relative',
-    flex: '0 0 auto',
-    width: 120,
-    background: isEquipped
-      ? `${color}15`
-      : disabled ? '#0d1120' : '#1a1f3a',
-    border: `1.5px solid ${isEquipped ? color : disabled ? '#1a1f3a' : '#2a3060'}`,
-    borderRadius: 10,
-    padding: 12,
-    cursor: disabled ? 'not-allowed' : 'pointer',
-    opacity: disabled ? 0.45 : 1,
-    transition: 'all 0.15s',
-    transform: isDragging ? `translate3d(${transform?.x || 0}px, ${transform?.y || 0}px, 0) scale(1.05)` : undefined,
-    zIndex: isDragging ? 200 : 1,
-    boxShadow: isDragging ? `0 8px 30px rgba(0,0,0,0.5)` : isEquipped ? `0 2px 12px ${color}30` : 'none',
-    userSelect: 'none'
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      onClick={onClick}
-      {...attributes}
-      {...listeners}
-    >
-      {/* Equipped indicator */}
-      {isEquipped && (
-        <div style={{
-          position: 'absolute', top: 5, right: 5,
-          width: 8, height: 8, borderRadius: '50%',
-          background: color,
-          boxShadow: `0 0 6px ${color}`
-        }} />
-      )}
-
-      {/* Part emoji */}
-      <div style={{ fontSize: 32, textAlign: 'center', marginBottom: 6 }}>
-        {getPartEmoji(part)}
-      </div>
-
-      {/* Part name */}
-      <div style={{
-        fontSize: 11, color: isEquipped ? color : '#8892b0',
-        fontFamily: 'Space Grotesk, sans-serif', fontWeight: 600,
-        textAlign: 'center', lineHeight: 1.3,
-        overflow: 'hidden', display: '-webkit-box',
-        WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'
-      }}>
-        {part.name}
-      </div>
-
-      {/* Cost badge */}
-      <div style={{
-        marginTop: 6, textAlign: 'center',
-        fontFamily: 'JetBrains Mono, monospace', fontSize: 13,
-        fontWeight: 700,
-        color: canAfford || isEquipped ? '#fbbf24' : '#4a5060'
-      }}>
-        {part.cost}b
-      </div>
-
-      {/* Lock icon for unaffordable */}
-      {disabled && !isEquipped && (
-        <div style={{
-          position: 'absolute', inset: 0, display: 'flex',
-          alignItems: 'center', justifyContent: 'center',
-          borderRadius: 10
-        }}>
-          <span style={{ fontSize: 18, opacity: 0.5 }}>🔒</span>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function getPartEmoji(part) {
-  const map = {
-    1: '🏃', 2: '🤖', 3: '🛡️', 4: '🌊',
-    5: '🤌', 6: '✂️', 7: '💪', 8: '🛠️', 9: '🤲',
-    10: '📷', 11: '🌡️', 12: '📡', 13: '🎤', 14: '👆', 15: '🔬',
-    16: '💾', 17: '🧠', 18: '🔭', 19: '⚖️', 20: '⚡',
-    21: '🔊', 22: '🗣️', 23: '😊', 24: '👋', 25: '🌐',
-    26: '🔋', 27: '🔋', 28: '☀️', 29: '☢️',
-    30: '💧', 31: '🔥', 32: '🏥', 33: '🪝', 34: '🔧',
-    35: '🥷', 36: '📻', 37: '🛡️', 38: '🚀', 39: '🎯', 40: '😄'
-  };
-  return map[part.id] || '⚙️';
 }

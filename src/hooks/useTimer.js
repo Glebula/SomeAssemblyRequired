@@ -1,39 +1,44 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-export function useTimer(initialSeconds, onExpire) {
-  const [seconds, setSeconds] = useState(initialSeconds);
-  const [running, setRunning] = useState(false);
-  const intervalRef = useRef(null);
-  const onExpireRef = useRef(onExpire);
-  onExpireRef.current = onExpire;
+export function useTimer(initialSeconds, { enabled = true, onComplete, onTick } = {}) {
+  const [timeLeft, setTimeLeft] = useState(initialSeconds);
+  const [paused, setPaused] = useState(false);
+  const onCompleteRef = useRef(onComplete);
+  const onTickRef = useRef(onTick);
+  onCompleteRef.current = onComplete;
+  onTickRef.current = onTick;
 
-  const start = useCallback(() => setRunning(true), []);
-  const pause = useCallback(() => setRunning(false), []);
-  const reset = useCallback((newSeconds) => {
-    setRunning(false);
-    setSeconds(newSeconds ?? initialSeconds);
+  useEffect(() => {
+    setTimeLeft(initialSeconds);
+    setPaused(false);
   }, [initialSeconds]);
 
   useEffect(() => {
-    if (!running) {
-      clearInterval(intervalRef.current);
-      return;
-    }
-    intervalRef.current = setInterval(() => {
-      setSeconds(prev => {
-        if (prev <= 1) {
-          clearInterval(intervalRef.current);
-          setRunning(false);
-          onExpireRef.current?.();
+    if (!enabled || paused || timeLeft <= 0) return;
+    const id = setInterval(() => {
+      setTimeLeft(prev => {
+        const next = prev - 1;
+        if (onTickRef.current) onTickRef.current(next);
+        if (next <= 0) {
+          clearInterval(id);
+          if (onCompleteRef.current) onCompleteRef.current();
           return 0;
         }
-        return prev - 1;
+        return next;
       });
     }, 1000);
-    return () => clearInterval(intervalRef.current);
-  }, [running]);
+    return () => clearInterval(id);
+  }, [enabled, paused, timeLeft > 0]);
 
-  const formatted = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+  const pause = useCallback(() => setPaused(true), []);
+  const resume = useCallback(() => setPaused(false), []);
+  const reset = useCallback((s) => { setTimeLeft(s ?? initialSeconds); setPaused(false); }, [initialSeconds]);
 
-  return { seconds, formatted, running, start, pause, reset };
+  return { timeLeft, paused, pause, resume, reset };
+}
+
+export function formatTime(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
 }

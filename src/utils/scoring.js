@@ -1,222 +1,181 @@
+import { PARTS_BY_ID } from '../data/parts';
 import { COMBOS } from '../data/combos';
 import { ENVIRONMENTS } from '../data/environments';
-import { PARTS } from '../data/parts';
 
-export const STAT_NAMES = ['precision', 'strength', 'perception', 'mobility', 'durability', 'adaptability', 'communication', 'social'];
+const ALL_STATS = ['precision', 'strength', 'perception', 'mobility', 'durability', 'adaptability', 'communication', 'social'];
 
-export function calculateStats(equippedPartIds, activeConflicts = [], activeCombos = [], mission = null) {
-  const stats = {
-    precision: 0, strength: 0, perception: 0, mobility: 0,
-    durability: 0, adaptability: 0, communication: 0, social: 0
-  };
+export function computeRobotStats(equippedPartIds, mission, statModifiers = {}) {
+  const parts = equippedPartIds.map(id => PARTS_BY_ID[id]).filter(Boolean);
+  const stats = Object.fromEntries(ALL_STATS.map(s => [s, 0]));
 
-  // Sum up all part benefits and tradeoffs
-  equippedPartIds.forEach(partId => {
-    const part = PARTS.find(p => p.id === partId);
-    if (!part) return;
-    STAT_NAMES.forEach(stat => {
-      if (part.benefits[stat]) stats[stat] += part.benefits[stat];
-      if (part.tradeoffs[stat]) stats[stat] += part.tradeoffs[stat];
-    });
-  });
-
-  // Apply combo bonuses
-  activeCombos.forEach(comboName => {
-    const combo = COMBOS.find(c => c.name === comboName);
-    if (!combo) return;
-    STAT_NAMES.forEach(stat => {
-      if (combo.bonus[stat]) stats[stat] += combo.bonus[stat];
-    });
-  });
-
-  // Apply conflict penalties
-  activeConflicts.forEach(() => {
-    stats.adaptability = Math.max(0, stats.adaptability - 2);
-  });
-
-  // Apply Voice Synthesizer uncanny valley penalty
-  const hasVoiceSynth = equippedPartIds.includes(22);
-  const hasEmotionDisplay = equippedPartIds.includes(23);
-  if (hasVoiceSynth && !hasEmotionDisplay) {
-    stats.social = Math.max(0, stats.social - 2);
-  }
-
-  // Apply Companion Personality Module physical penalty
-  const hasCPM = equippedPartIds.includes(40);
-  if (hasCPM) {
-    stats.precision = Math.max(0, stats.precision - 2);
-    stats.strength = Math.max(0, stats.strength - 2);
-  }
-
-  // Clamp all stats to 0 minimum
-  STAT_NAMES.forEach(stat => {
-    stats[stat] = Math.max(0, stats[stat]);
-  });
-
-  return stats;
-}
-
-export function getActiveCombos(equippedPartIds, missionCategory) {
-  const active = [];
-  COMBOS.forEach(combo => {
-    const allPresent = combo.parts.every(id => equippedPartIds.includes(id));
-    if (!allPresent) return;
-    if (combo.applicableTo === 'all') {
-      active.push(combo.name);
-    } else if (missionCategory && combo.applicableTo.includes(missionCategory)) {
-      active.push(combo.name);
-    } else if (!missionCategory) {
-      active.push(combo.name);
+  for (const part of parts) {
+    for (const [stat, val] of Object.entries(part.benefits || {})) {
+      stats[stat] = (stats[stat] || 0) + val;
     }
-  });
-  return active;
+    for (const [stat, val] of Object.entries(part.tradeoffs || {})) {
+      stats[stat] = (stats[stat] || 0) + val;
+    }
+  }
+
+  // Apply stat modifiers (from curveballs etc.)
+  for (const [stat, val] of Object.entries(statModifiers)) {
+    stats[stat] = (stats[stat] || 0) + val;
+  }
+
+  // Check combos
+  const activeCombos = [];
+  for (const combo of COMBOS) {
+    const allPresent = combo.parts.every(pid => equippedPartIds.includes(pid));
+    if (!allPresent) continue;
+    // Apply bonus if mission category matches or combo is universal
+    const missionCat = mission?.category;
+    if (combo.missionCategory === null || !combo.missionCategory || combo.missionCategory === missionCat) {
+      activeCombos.push(combo);
+      for (const [stat, val] of Object.entries(combo.bonus)) {
+        stats[stat] = (stats[stat] || 0) + val;
+      }
+    }
+  }
+
+  // Check conflicts
+  const activeConflicts = [];
+  const partIdSet = new Set(equippedPartIds);
+
+  // OVERLOAD: Light Scout Frame (1) + Nuclear Reactor (29)
+  if (partIdSet.has(1) && partIdSet.has(29)) {
+    activeConflicts.push({ name: 'OVERLOAD', description: "Frame can't handle the reactor!" });
+    for (const s of ALL_STATS) stats[s] = Math.max(0, (stats[s] || 0) - 5);
+  }
+
+  // INTERFERENCE: Precision Arms (6) + Heavy Lift Claws (7)
+  if (partIdSet.has(6) && partIdSet.has(7)) {
+    activeConflicts.push({ name: 'INTERFERENCE', description: 'Arms clash — reduced effectiveness' });
+    stats.precision = Math.max(0, (stats.precision || 0) - 2);
+    stats.strength = Math.max(0, (stats.strength || 0) - 2);
+  }
+
+  // CONFLICT: Multiple AI modules
+  const aiIds = [16, 17, 18, 19, 20];
+  const equippedAI = aiIds.filter(id => partIdSet.has(id));
+  if (equippedAI.length > 1) {
+    activeConflicts.push({ name: 'CONFLICT', description: 'Multiple processors fighting each other' });
+    stats.adaptability = Math.max(0, (stats.adaptability || 0) - 2);
+  }
+
+  // Voice Synthesizer (22) without Emotion Display (23) = uncanny valley
+  if (partIdSet.has(22) && !partIdSet.has(23)) {
+    stats.social = Math.max(0, (stats.social || 0) - 2);
+  }
+
+  // Gesture Module (24) requires arms
+  const hasArms = parts.some(p => p.category === 'arms');
+  if (partIdSet.has(24) && !hasArms) {
+    stats.communication = Math.max(0, (stats.communication || 0) - 2);
+    stats.social = Math.max(0, (stats.social || 0) - 2);
+  }
+
+  // Clamp all to 0+
+  for (const s of ALL_STATS) stats[s] = Math.max(0, stats[s] || 0);
+
+  return { stats, activeCombos, activeConflicts };
 }
 
-export function getActiveConflicts(equippedPartIds) {
-  const conflicts = [];
-  const equippedParts = equippedPartIds.map(id => PARTS.find(p => p.id === id)).filter(Boolean);
+export function applyEnvironmentToRequirements(requirements, mission) {
+  if (!requirements) return requirements;
+  const env = ENVIRONMENTS[mission?.environment] || ENVIRONMENTS.normal;
+  const effects = env.effects || {};
+  const req = { ...requirements };
 
-  equippedParts.forEach(part => {
-    if (!part.conflictsWith || part.conflictsWith.length === 0) return;
-    part.conflictsWith.forEach(conflictId => {
-      if (equippedPartIds.includes(conflictId)) {
-        const conflictPart = PARTS.find(p => p.id === conflictId);
-        const conflictKey = [part.id, conflictId].sort().join('-');
-        if (!conflicts.find(c => c.key === conflictKey)) {
-          conflicts.push({
-            key: conflictKey,
-            parts: [part.name, conflictPart?.name],
-            name: part.conflictName || 'CONFLICT',
-            effect: part.conflictEffect || 'Parts conflict with each other'
-          });
+  if (effects.socialRequirementBonus) req.social = (req.social || 0) + effects.socialRequirementBonus;
+  if (effects.mobilityRequirementBonus) req.mobility = (req.mobility || 0) + effects.mobilityRequirementBonus;
+  if (effects.communicationDisabled) req.communication = 0;
+
+  return req;
+}
+
+export function applyEnvironmentToStats(stats, equippedPartIds, mission) {
+  const env = ENVIRONMENTS[mission?.environment] || ENVIRONMENTS.normal;
+  const effects = env.effects || {};
+  const s = { ...stats };
+  const partIdSet = new Set(equippedPartIds);
+
+  // Perception cap (unless overriding sensors equipped)
+  if (effects.perceptionCap !== undefined) {
+    const hasOverride = (effects.overriddenByIds || []).some(id => partIdSet.has(id));
+    if (!hasOverride) s.perception = Math.min(s.perception || 0, effects.perceptionCap);
+  }
+
+  // Communication disabled
+  if (effects.communicationDisabled) s.communication = 0;
+
+  // Heat shield required
+  if (effects.requiresHeatShield && !partIdSet.has(31)) {
+    s.durability = Math.max(0, (s.durability || 0) - 3);
+    s.mobility = Math.max(0, (s.mobility || 0) - 2);
+  }
+
+  // Waterproofing required (part 30 OR amphibious frame 4)
+  if (effects.requiresWaterproofing && !partIdSet.has(30) && !partIdSet.has(4)) {
+    for (const stat of ALL_STATS) s[stat] = Math.max(0, (s[stat] || 0) - 3);
+  }
+
+  // Banned parts: their benefits are negated
+  if (effects.bannedPartIds) {
+    for (const bannedId of effects.bannedPartIds) {
+      if (partIdSet.has(bannedId)) {
+        const part = PARTS_BY_ID[bannedId];
+        if (part) {
+          for (const [stat, val] of Object.entries(part.benefits || {})) {
+            s[stat] = Math.max(0, (s[stat] || 0) - val);
+          }
         }
       }
-    });
-  });
-
-  return conflicts;
-}
-
-export function calculateTotalWeight(equippedPartIds) {
-  return equippedPartIds.reduce((sum, id) => {
-    const part = PARTS.find(p => p.id === id);
-    return sum + (part?.weight || 0);
-  }, 0);
-}
-
-export function calculateTotalPower(equippedPartIds) {
-  return equippedPartIds.reduce((sum, id) => {
-    const part = PARTS.find(p => p.id === id);
-    return sum + (part?.power || 0);
-  }, 0);
-}
-
-export function getPowerBudget(equippedPartIds) {
-  let budget = 0;
-  equippedPartIds.forEach(id => {
-    const part = PARTS.find(p => p.id === id);
-    if (part?.specialRules?.powerBudget) {
-      budget += part.specialRules.powerBudget;
-    }
-  });
-  return budget === 0 ? 10 : budget; // Default 10 if no power source
-}
-
-export function calculateScore(equippedPartIds, mission, difficulty = 'bronze', curveballPenalty = 0, glitchOccurred = false) {
-  if (!mission || !mission.requirements) {
-    return { total: 0, breakdown: {}, grade: 'failed', activeCombos: [], activeConflicts: [] };
-  }
-
-  const activeCombos = getActiveCombos(equippedPartIds, mission.category);
-  const activeConflicts = getActiveConflicts(equippedPartIds);
-  const stats = calculateStats(equippedPartIds, activeConflicts, activeCombos, mission);
-
-  // Apply environment effects
-  const env = ENVIRONMENTS[mission.environment] || ENVIRONMENTS['normal'];
-  const envEffects = env.effects;
-
-  let adjustedStats = { ...stats };
-
-  // Underwater without waterproofing
-  const hasWaterproof = equippedPartIds.some(id => {
-    const p = PARTS.find(p => p.id === id);
-    return p?.specialRules?.waterproof;
-  });
-  if (envEffects.requiresWaterproofing && !hasWaterproof) {
-    ['strength', 'mobility', 'precision', 'durability'].forEach(s => {
-      adjustedStats[s] = 0;
-    });
-  }
-
-  // Perception cap (low visibility)
-  if (envEffects.perceptionCap !== undefined) {
-    const hasOverride = equippedPartIds.includes(11) || equippedPartIds.includes(12);
-    if (!hasOverride) {
-      adjustedStats.perception = Math.min(adjustedStats.perception, envEffects.perceptionCap);
     }
   }
 
-  // Communication disabled in remote areas
-  if (envEffects.communicationDisabled) {
-    adjustedStats.communication = 0;
-  }
+  return s;
+}
 
-  // Sterile environment banned parts
-  if (envEffects.bannedParts) {
-    const hasBannedPart = equippedPartIds.some(id => envEffects.bannedParts.includes(id));
-    if (hasBannedPart) {
-      STAT_NAMES.forEach(s => { adjustedStats[s] = Math.max(0, adjustedStats[s] - 2); });
-    }
-  }
+export function calculateScore(equippedPartIds, mission, statModifiers = {}, curveballMods = { scoreDelta: 0 }, noGlitchRisk = false) {
+  if (!mission?.requirements) return { total: 0, grade: 'failed', breakdown: {}, activeCombos: [], activeConflicts: [] };
 
-  // Difficulty multiplier for requirements
-  const difficultyMultiplier = { bronze: 0.8, silver: 1.0, gold: 1.2 }[difficulty] || 1.0;
+  const { stats, activeCombos, activeConflicts } = computeRobotStats(equippedPartIds, mission, statModifiers);
+  const adjustedStats = applyEnvironmentToStats(stats, equippedPartIds, mission);
+  const adjustedReqs = applyEnvironmentToRequirements(mission.requirements, mission);
 
-  let totalScore = 0;
+  let total = 0;
   const breakdown = {};
 
-  STAT_NAMES.forEach(stat => {
-    const rawReq = mission.requirements[stat] || 0;
-    const requirement = Math.ceil(rawReq * difficultyMultiplier);
-    const actual = adjustedStats[stat];
-
+  for (const stat of ALL_STATS) {
+    const requirement = adjustedReqs[stat] || 0;
+    const actual = adjustedStats[stat] || 0;
     let statScore;
-    if (requirement === 0) {
-      statScore = 12.5;
-    } else if (actual >= requirement) {
-      statScore = 12.5;
+
+    if (actual >= requirement) {
       const overBonus = Math.min((actual - requirement) * 0.5, 2);
-      statScore += overBonus;
+      statScore = 12.5 + overBonus;
     } else {
       const gap = requirement - actual;
       statScore = Math.max(12.5 - gap * 4, 0);
     }
 
-    breakdown[stat] = {
-      requirement,
-      actual,
-      score: statScore,
-      met: actual >= requirement
-    };
-
-    totalScore += statScore;
-  });
-
-  // Apply glitch penalty
-  if (glitchOccurred) {
-    totalScore = Math.max(0, totalScore - 8);
+    total += statScore;
+    breakdown[stat] = { requirement, actual, statScore, met: actual >= requirement };
   }
 
-  // Apply curveball penalty
-  totalScore = Math.max(0, totalScore + curveballPenalty);
+  total = Math.min(100, total);
 
-  const capped = Math.min(100, Math.round(totalScore));
+  // Glitch risk from Adaptive Learning Module (17)
+  const partIdSet = new Set(equippedPartIds);
+  if (partIdSet.has(17) && !noGlitchRisk && !partIdSet.has(34)) {
+    if (Math.random() < 0.10) total = Math.max(0, total - 8);
+  }
 
-  return {
-    total: capped,
-    breakdown,
-    grade: capped >= 85 ? 'gold' : capped >= 70 ? 'silver' : capped >= 50 ? 'bronze' : 'failed',
-    activeCombos,
-    activeConflicts
-  };
+  // Curveball score delta
+  total = Math.max(0, Math.min(100, total + (curveballMods.scoreDelta || 0)));
+  total = Math.round(total);
+
+  const grade = total >= 85 ? 'gold' : total >= 70 ? 'silver' : total >= 50 ? 'bronze' : 'failed';
+
+  return { total, grade, breakdown, activeCombos, activeConflicts };
 }

@@ -1,11 +1,9 @@
-import { Component } from 'react';
 import { useGameState, SCREENS } from './hooks/useGameState';
 import HomeScreen from './components/screens/HomeScreen';
-import MissionDraw from './components/screens/MissionDraw';
-import MissionBriefing from './components/screens/MissionBriefing';
+import DrawMission from './components/screens/DrawMission';
 import BuildScreen from './components/screens/BuildScreen';
 import CurveballScreen from './components/screens/CurveballScreen';
-import QuestionsScreen from './components/screens/QuestionsScreen';
+import QuestionScreen from './components/screens/QuestionScreen';
 import SimulationScreen from './components/screens/SimulationScreen';
 import ResultsScreen from './components/screens/ResultsScreen';
 import SettingsScreen from './components/screens/SettingsScreen';
@@ -13,171 +11,90 @@ import LeaderboardScreen from './components/screens/LeaderboardScreen';
 import DevBadge from './components/common/DevBadge';
 
 export default function App() {
-  const {
-    state,
-    update,
-    goTo,
-    startNewGame,
-    setMission,
-    equipPart,
-    unequipPart,
-    addScore,
-    clearLeaderboard,
-    updateSettings,
-    enableDevMode,
-    disableDevMode
-  } = useGameState();
+  const game = useGameState();
+  const { state } = game;
 
-  const { screen, devMode } = state;
-
-  const renderScreen = () => {
-    switch (screen) {
+  function renderScreen() {
+    switch (state.screen) {
       case SCREENS.HOME:
-        return <HomeScreen goTo={goTo} />;
-
-      case SCREENS.MISSION_DRAW:
-        return (
-          <MissionDraw
-            state={state}
-            goTo={goTo}
-            setMission={setMission}
-          />
-        );
-
-      case SCREENS.MISSION_BRIEFING:
-        return <MissionBriefing state={state} goTo={goTo} />;
-
+        return <HomeScreen goTo={game.goTo} />;
+      case SCREENS.DRAW_MISSION:
+        return <DrawMission state={state} goTo={game.goTo} setMission={game.setMission} />;
       case SCREENS.BUILD:
         return (
           <BuildScreen
             state={state}
-            goTo={goTo}
-            update={update}
-            equipPart={equipPart}
-            unequipPart={unequipPart}
+            goTo={game.goTo}
+            equipPart={game.equipPart}
+            unequipPart={game.unequipPart}
+            addToast={game.addToast}
+            revealMysteryMission={game.revealMysteryMission}
+            update={game.update}
           />
         );
-
       case SCREENS.CURVEBALL:
         return (
           <CurveballScreen
             state={state}
-            goTo={goTo}
-            update={update}
-            unequipPart={unequipPart}
+            goTo={game.goTo}
+            pickCurveball={game.pickCurveball}
+            applyCurveballEffect={game.applyCurveballEffect}
           />
         );
-
-      case SCREENS.QUESTIONS:
+      case SCREENS.QUESTION:
         return (
-          <QuestionsScreen
+          <QuestionScreen
             state={state}
-            goTo={goTo}
-            update={update}
+            goTo={game.goTo}
+            pickQuestion={game.pickQuestion}
+            answerQuestion={game.answerQuestion}
           />
         );
-
       case SCREENS.SIMULATION:
         return (
           <SimulationScreen
             state={state}
-            goTo={goTo}
-            update={update}
+            goTo={game.goTo}
+            setSimulationResult={game.setSimulationResult}
           />
         );
-
       case SCREENS.RESULTS:
         return (
           <ResultsScreen
             state={state}
-            goTo={goTo}
-            startNewGame={startNewGame}
-            addScore={addScore}
+            goTo={game.goTo}
+            startNewGame={game.startNewGame}
+            addScore={game.addScore}
           />
         );
-
       case SCREENS.SETTINGS:
         return (
           <SettingsScreen
             state={state}
-            goTo={goTo}
-            updateSettings={updateSettings}
-            enableDevMode={enableDevMode}
-            disableDevMode={disableDevMode}
-            setMission={setMission}
+            goTo={game.goTo}
+            updateSettings={game.updateSettings}
+            enableDevMode={game.enableDevMode}
+            disableDevMode={game.disableDevMode}
           />
         );
-
       case SCREENS.LEADERBOARD:
         return (
           <LeaderboardScreen
             state={state}
-            goTo={goTo}
-            addScore={addScore}
-            clearLeaderboard={clearLeaderboard}
+            goTo={game.goTo}
+            addScore={game.addScore}
+            clearLeaderboard={game.clearLeaderboard}
           />
         );
-
       default:
-        return <HomeScreen goTo={goTo} />;
+        return <HomeScreen goTo={game.goTo} />;
     }
-  };
+  }
 
   return (
-    <ErrorBoundary>
+    <>
+      <DevBadge devMode={state.devMode} />
       {renderScreen()}
-      {devMode && <DevBadge />}
-    </ErrorBoundary>
+    </>
   );
-}
-
-class ErrorBoundary extends Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error };
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div style={{
-          minHeight: '100vh', background: '#0a0e1a',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24
-        }}>
-          <div style={{ maxWidth: 480, textAlign: 'center' }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>💥</div>
-            <h2 style={{
-              fontFamily: 'Space Grotesk, sans-serif', fontSize: 24, fontWeight: 700,
-              color: '#ef4444', marginBottom: 16, marginTop: 0
-            }}>
-              Something went wrong
-            </h2>
-            <p style={{
-              color: '#8892b0', fontFamily: 'Space Grotesk, sans-serif',
-              fontSize: 14, marginBottom: 8, lineHeight: 1.5
-            }}>
-              {this.state.error?.message || 'An unexpected error occurred.'}
-            </p>
-            <button
-              onClick={() => window.location.reload()}
-              style={{
-                padding: '12px 28px', background: 'linear-gradient(135deg, #00b4ff, #0080cc)',
-                border: 'none', borderRadius: 10, color: 'white',
-                fontSize: 15, fontWeight: 700, cursor: 'pointer',
-                fontFamily: 'Space Grotesk, sans-serif',
-                boxShadow: '0 4px 20px rgba(0,180,255,0.3)'
-              }}
-            >
-              Reload Game
-            </button>
-          </div>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
 }

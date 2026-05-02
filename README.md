@@ -1,27 +1,19 @@
-# Some Assembly Required 🤖
+# Some Assembly Required
 
-> A hybrid card + digital robotics engineering game designed for teen events like MIT Robotics competitions.
+A browser-based robotics engineering game for teens at robotics events (MIT and beyond).
 
-**Design. Build. Test.**
+## What is it?
 
-## What is this?
+Players are randomly dealt a real-world robot job — like "Firefighter Bot" or "Robot Surgeon" — then build a robot by selecting parts on a visual workbench. A 2-minute build timer, a curveball event, a quick trivia question, and a field test simulation determine their final score.
 
-Some Assembly Required is a browser-based game where players draw a physical **Mission Card** from a real deck, type the card's code into this web app, then build a robot by dragging and dropping visual components onto a workbench. The robot assembles visually as parts are added. A simulation then tests the robot against the mission, and players receive a score out of 100.
+**No backend. No accounts. No localStorage. Refresh = full reset. Pick up and play.**
 
-Built for teens (13–17) at robotics events — no accounts, no saved data, just pure gameplay.
+## Tech Stack
 
-## Features
-
-- **20 unique missions** — from Hospital Nurse Bot to Avalanche Rescue to Deep Sea Repair
-- **40 robot parts** across 7 categories (Frame, Arms, Sensors, AI, Communication, Power, Specialty)
-- **Combo system** — pair compatible parts for bonus synergies (⚡ Surgeon Suite, Empathy Engine, All-Seeing, Extraction Kit)
-- **Conflict system** — incompatible parts penalize stats (⚠ OVERLOAD, INTERFERENCE)
-- **Drag-and-drop workbench** with live robot visualization
-- **Curveball events** — unexpected challenges after the build phase
-- **Bits Challenge** — earn bonus currency by answering engineering, logic, and ethics questions
-- **Field Test simulation** — animated playback of your robot attempting the mission
-- **Live leaderboard** — track scores at your event (all in-memory, no server needed)
-- **Developer Mode** — hidden tools for facilitators and event organizers
+- React 18 + Vite
+- Tailwind CSS v4
+- @dnd-kit/core for drag-and-drop
+- Fully client-side, static deployment
 
 ## Setup
 
@@ -30,40 +22,36 @@ npm install
 npm run dev
 ```
 
-Then open http://localhost:5173
-
-## Build for Deployment
+Build for production:
 
 ```bash
 npm run build
 ```
 
-The `dist/` folder can be deployed to Vercel, Netlify, or GitHub Pages — it's a fully static site.
+## Game Flow
 
-## How to Play
+```
+Home → Draw Mission → Build (2 min) → Curveball → Question → Simulation → Results
+```
 
-1. **Draw a Mission Card** from the physical deck
-2. **Enter the code** (format: `MSN-XXXX`) into the app
-3. **Read the Mission Briefing** — understand the job, environment, and stat requirements
-4. **Build your robot** in 3 minutes by dragging parts onto the workbench
-5. **Face a Curveball** — an unexpected event challenges your design
-6. **Answer the Bits Challenge** — earn bonus currency with engineering questions
-7. **Watch the Field Test** — see how your robot performs against the mission
-8. **See your score** — 0-100, with Bronze/Silver/Gold badges
+- **20 missions** across social, environmental, and physical categories
+- **40 robot parts** with stats, tradeoffs, combos, and conflicts
+- **4 combos** (Surgeon Suite, Empathy Engine, All-Seeing, Extraction Kit)
+- **8 curveball events** with binary choices
+- **20 questions** (engineering, logic, ethics, tradeoffs)
+- Mystery Mission: job revealed at 1:00 remaining
+- Player's Choice: describe any job, requirements auto-generated
 
-## Dev Mode
+## Scoring
 
-Access via Settings (⚙) — password: `SAR-DEV-2026`
+Bronze: 50+ | Silver: 70+ | Gold: 85+
 
-Dev Mode unlocks: unlimited Bits, unlimited time, skip phases, force scores, phase jumping, and more.
+## Developer Mode
 
-## Tech Stack
+Password: `SAR-DEV-2026` (enter in Settings)
 
-- **React** (Vite)
-- **Tailwind CSS**
-- **@dnd-kit** for drag-and-drop
-- 100% client-side — no backend, no database, no localStorage
+Enables: unlimited bits/time, phase jumping, force score, force mission, and more.
 
 ---
 
-*Designed for MIT Robotics Events. All state resets on page refresh — intentional!*
+*Designed for robotics events. ~5 minutes per round.*

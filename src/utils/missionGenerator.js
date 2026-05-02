@@ -1,58 +1,43 @@
-export function generateRequirementsFromDescription(description) {
-  const text = description.toLowerCase();
-  const reqs = { precision: 2, strength: 2, perception: 2, mobility: 2, durability: 2, adaptability: 2, communication: 2, social: 2 };
+export function generateRequirementsFromDescription(text) {
+  const t = text.toLowerCase();
+  const req = { precision: 2, strength: 2, perception: 2, mobility: 2, durability: 2, adaptability: 2, communication: 2, social: 2 };
 
-  const keywords = {
-    precision: ['surgery', 'surgical', 'precise', 'precision', 'delicate', 'micro', 'nano', 'repair', 'calibrate', 'fiber', 'optic'],
-    strength: ['lift', 'heavy', 'construction', 'build', 'carry', 'move', 'steel', 'beam', 'demolish', 'dig', 'excavate'],
-    perception: ['detect', 'scan', 'sense', 'find', 'locate', 'search', 'vision', 'camera', 'thermal', 'survey', 'map', 'patrol', 'fire', 'smoke'],
-    mobility: ['fast', 'speed', 'agile', 'navigate', 'underwater', 'swim', 'fly', 'climb', 'terrain', 'explore', 'patrol', 'delivery'],
-    durability: ['fire', 'explosion', 'extreme', 'hostile', 'dangerous', 'hazard', 'radiation', 'heat', 'cold', 'pressure', 'deep', 'ocean', 'disaster'],
-    adaptability: ['adapt', 'flexible', 'learn', 'dynamic', 'unpredictable', 'change', 'varying', 'multiple', 'diverse', 'unknown'],
-    communication: ['communicate', 'report', 'signal', 'translate', 'language', 'broadcast', 'alert', 'notify', 'coordinate', 'team'],
-    social: ['customer', 'service', 'people', 'patient', 'social', 'human', 'interaction', 'care', 'assist', 'help', 'friend', 'companion', 'therapy', 'teach', 'tutor']
-  };
+  if (/fire|heat|burn|flame|rescue/.test(t)) {
+    Object.assign(req, { perception: 5, durability: 5, mobility: 4, strength: 4, adaptability: 3 });
+  } else if (/hospital|patient|medical|surgery|nurse|doctor|clinic/.test(t)) {
+    Object.assign(req, { precision: 5, perception: 4, social: 4, communication: 4, adaptability: 3 });
+  } else if (/underwater|ocean|deep|sea|marine|submarine/.test(t)) {
+    Object.assign(req, { durability: 5, mobility: 4, perception: 4, adaptability: 4 });
+  } else if (/customer|service|hotel|restaurant|retail|store|shop/.test(t)) {
+    Object.assign(req, { social: 5, communication: 5, adaptability: 4, mobility: 3 });
+  } else if (/factory|build|construct|assembly|weld|manufactur/.test(t)) {
+    Object.assign(req, { strength: 5, precision: 4, durability: 4, adaptability: 2 });
+  } else if (/rescue|disaster|emergency|avalanche|earthquake|hurricane/.test(t)) {
+    Object.assign(req, { perception: 5, durability: 5, strength: 4, mobility: 4, adaptability: 4 });
+  } else if (/bomb|explosive|defuse|disposal|mine/.test(t)) {
+    Object.assign(req, { precision: 5, perception: 5, adaptability: 5, durability: 4 });
+  } else if (/space|asteroid|planet|orbit|satellite/.test(t)) {
+    Object.assign(req, { durability: 5, adaptability: 5, precision: 4, mobility: 3 });
+  } else if (/teach|tutor|school|educat|student|learn/.test(t)) {
+    Object.assign(req, { adaptability: 5, communication: 5, social: 4, perception: 3 });
+  } else if (/care|elder|assist|companion|therapy|mental/.test(t)) {
+    Object.assign(req, { social: 5, communication: 5, adaptability: 4, perception: 4 });
+  } else if (/deliver|courier|transport|carry|supply/.test(t)) {
+    Object.assign(req, { mobility: 5, durability: 3, adaptability: 3, precision: 2 });
+  } else if (/farm|harvest|agricult|crop|soil/.test(t)) {
+    Object.assign(req, { mobility: 4, durability: 4, precision: 3, strength: 3 });
+  } else if (/secur|guard|patrol|police|surveil/.test(t)) {
+    Object.assign(req, { perception: 5, mobility: 4, durability: 4, adaptability: 3, communication: 3 });
+  }
 
-  const boostFactors = {
-    'hospital': { precision: 2, social: 2, communication: 2 },
-    'medical': { precision: 2, social: 1, communication: 1 },
-    'underwater': { durability: 2, mobility: 2 },
-    'ocean': { durability: 2, mobility: 1 },
-    'deep sea': { durability: 3, mobility: 1 },
-    'fire': { durability: 3, perception: 2 },
-    'rescue': { durability: 2, perception: 2, mobility: 1 },
-    'customer': { social: 3, communication: 3 },
-    'elderly': { social: 3, communication: 2 },
-    'child': { social: 2, communication: 2, adaptability: 1 },
-    'bomb': { precision: 3, perception: 2, adaptability: 2 },
-    'space': { durability: 2, adaptability: 2, communication: 1 },
-    'military': { durability: 3, strength: 2, precision: 1 },
-    'farm': { strength: 2, durability: 1, mobility: 2 },
-    'warehouse': { strength: 2, mobility: 2, precision: 1 }
-  };
+  // Clamp all stats to 1–5
+  for (const k of Object.keys(req)) req[k] = Math.max(1, Math.min(5, req[k]));
+  return req;
+}
 
-  // Keyword matching
-  Object.entries(keywords).forEach(([stat, words]) => {
-    words.forEach(word => {
-      if (text.includes(word)) {
-        reqs[stat] = Math.min(5, reqs[stat] + 1);
-      }
-    });
-  });
-
-  // Context boosts
-  Object.entries(boostFactors).forEach(([phrase, boosts]) => {
-    if (text.includes(phrase)) {
-      Object.entries(boosts).forEach(([stat, amount]) => {
-        reqs[stat] = Math.min(5, reqs[stat] + amount);
-      });
-    }
-  });
-
-  // Normalize to 1-5 range
-  Object.keys(reqs).forEach(stat => {
-    reqs[stat] = Math.max(1, Math.min(5, reqs[stat]));
-  });
-
-  return reqs;
+export function generateTopStats(requirements) {
+  return Object.entries(requirements)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 3)
+    .map(([k]) => k);
 }

@@ -1,529 +1,295 @@
-import { useState, useEffect, useCallback } from 'react';
-import { DndContext, DragOverlay, useDraggable, useDroppable, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { useState, useEffect, useRef } from 'react';
+import { DndContext, DragOverlay, useDroppable } from '@dnd-kit/core';
 import { SCREENS } from '../../hooks/useGameState';
-import { PARTS, CATEGORY_COLORS, SINGLE_SLOT_CATEGORIES } from '../../data/parts';
-import { MISSIONS } from '../../data/missions';
-import { CURVEBALLS } from '../../data/curveballs';
-import { calculateStats, getActiveCombos, getActiveConflicts } from '../../utils/scoring';
-import { useTimer } from '../../hooks/useTimer';
-import RadarChart from '../common/RadarChart';
-import PartsTray from '../build/PartsTray';
+import { PARTS_BY_ID, SINGLE_EQUIP_CATEGORIES } from '../../data/parts';
+import { useTimer, formatTime } from '../../hooks/useTimer';
+import { useScoring } from '../../hooks/useScoring';
+import { COMBOS } from '../../data/combos';
 import RobotVisualization from '../build/RobotVisualization';
+import PartsTray from '../build/PartsTray';
 import PartInfoPopup from '../build/PartInfoPopup';
+import StatsRadar from '../build/StatsRadar';
+import Timer from '../common/Timer';
+import ToastContainer from '../common/Toast';
 
-const BUILD_TIME = 120; // 2 minutes
-const MYSTERY_REVEAL_TIME = 90; // 1:30 remaining
+const STAT_ICONS = { precision:'🎯', strength:'💪', perception:'👁️', mobility:'⚡', durability:'🛡️', adaptability:'🧠', communication:'📡', social:'🤝' };
+const BUILD_SECONDS = 120;
 
-export default function BuildScreen({ state, goTo, update, equipPart, unequipPart }) {
-  const { mission, bits, equippedPartIds, settings, devMode, difficulty } = state;
-  const [selectedPart, setSelectedPart] = useState(null);
-  const [dragItem, setDragItem] = useState(null);
-  const [comboFlash, setComboFlash] = useState(null);
-  const [conflictFlash, setConflictFlash] = useState(null);
-  const [statsOpen, setStatsOpen] = useState(false);
-  const [mysteryRevealed, setMysteryRevealed] = useState(false);
-  const [mysteryRequirements, setMysteryRequirements] = useState(null);
-
-  const isMystery = state.missionCode === 'MSN-1019';
-
-  const handleTimerExpire = useCallback(() => {
-    if (!settings?.unlimitedTime || !devMode) {
-      endBuildPhase();
-    }
-  }, [settings, devMode, equippedPartIds]);
-
-  const timer = useTimer(
-    settings?.unlimitedTime && devMode ? 9999 : BUILD_TIME,
-    handleTimerExpire
-  );
-
-  useEffect(() => {
-    timer.start();
-  }, []);
-
-  // Mystery mission reveal at 1:30
-  useEffect(() => {
-    if (isMystery && timer.seconds <= MYSTERY_REVEAL_TIME && !mysteryRevealed) {
-      const otherMissions = Object.entries(MISSIONS).filter(([code]) => code !== 'MSN-1019' && code !== 'MSN-1020');
-      const [, randomMission] = otherMissions[Math.floor(Math.random() * otherMissions.length)];
-      setMysteryRequirements(randomMission.requirements);
-      setMysteryRevealed(true);
-      update({ mysteryMissionRequirements: randomMission.requirements, mysterMissionRevealed: true });
-    }
-  }, [timer.seconds, isMystery, mysteryRevealed]);
-
-  function endBuildPhase() {
-    timer.pause();
-    // Pick random curveball
-    const curveball = settings?.skipCurveball && devMode
-      ? null
-      : settings?.forceCurveball && devMode
-        ? CURVEBALLS.find(c => c.id === settings.forceCurveball) || CURVEBALLS[Math.floor(Math.random() * CURVEBALLS.length)]
-        : CURVEBALLS[Math.floor(Math.random() * CURVEBALLS.length)];
-    update({ curveballEvent: curveball });
-
-    if (settings?.skipCurveball && devMode) {
-      goTo(settings?.skipQuestions && devMode ? SCREENS.SIMULATION : SCREENS.QUESTIONS);
-    } else {
-      goTo(SCREENS.CURVEBALL);
-    }
-  }
-
-  // Current stats
-  const activeCombos = getActiveCombos(equippedPartIds, mission?.category);
-  const activeConflicts = getActiveConflicts(equippedPartIds);
-  const currentStats = calculateStats(equippedPartIds, activeConflicts, activeCombos, mission);
-
-  const effectiveRequirements = isMystery
-    ? (mysteryRevealed ? mysteryRequirements : null)
-    : mission?.requirements;
-
-  // Detect new combos/conflicts
-  useEffect(() => {
-    if (activeCombos.length > 0) {
-      const lastCombo = activeCombos[activeCombos.length - 1];
-      setComboFlash(lastCombo);
-      setTimeout(() => setComboFlash(null), 3000);
-    }
-  }, [activeCombos.length]);
-
-  useEffect(() => {
-    if (activeConflicts.length > 0) {
-      const lastConflict = activeConflicts[activeConflicts.length - 1];
-      setConflictFlash(lastConflict.name);
-      setTimeout(() => setConflictFlash(null), 3000);
-    }
-  }, [activeConflicts.length]);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } })
-  );
-
-  function handleDragStart(event) {
-    const partData = event.active.data.current?.part;
-    if (partData) setDragItem(partData);
-  }
-
-  function handleDragEnd(event) {
-    setDragItem(null);
-    const { active, over } = event;
-    if (!over) return;
-
-    const part = active.data.current?.part;
-    if (!part) return;
-    const fromTray = active.data.current?.fromTray;
-    const fromWorkbench = active.data.current?.fromWorkbench;
-
-    if (over.id === 'workbench' && fromTray && !equippedPartIds.includes(part.id)) {
-      handleEquipPart(part);
-    } else if (over.id === 'parts-tray' && fromWorkbench) {
-      handleUnequipPart(part);
-    } else if (over.id === 'remove-zone' && fromWorkbench) {
-      handleUnequipPart(part);
-    }
-  }
-
-  function handleEquipPart(part) {
-    const canAfford = (settings?.unlimitedBits && devMode) || bits >= part.cost;
-    if (!canAfford) return;
-
-    // Check single-slot categories
-    if (SINGLE_SLOT_CATEGORIES.includes(part.category)) {
-      const alreadyHas = equippedPartIds.some(id => {
-        const ep = PARTS.find(p => p.id === id);
-        return ep?.category === part.category;
-      });
-      if (alreadyHas) return;
-    }
-
-    equipPart(part.id, part.cost);
-  }
-
-  function handleUnequipPart(part) {
-    unequipPart(part.id, part.cost);
-  }
-
-  const timerColor = timer.seconds <= 30 ? '#ef4444' : timer.seconds <= 60 ? '#fbbf24' : '#00f0ff';
-
-  return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div style={{
-        height: '100vh', display: 'flex', flexDirection: 'column',
-        background: '#0a0e1a', overflow: 'hidden'
-      }}>
-        {/* Top bar */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 16,
-          padding: '10px 16px',
-          background: '#12172e', borderBottom: '1px solid #2a3060',
-          flexShrink: 0, flexWrap: 'wrap'
-        }}>
-          {/* Timer */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 12, color: '#8892b0', fontFamily: 'JetBrains Mono, monospace' }}>⏱</span>
-            <span style={{
-              fontFamily: 'JetBrains Mono, monospace', fontSize: 28, fontWeight: 700,
-              color: timerColor,
-              animation: timer.seconds <= 10 ? 'blink 1s infinite' : undefined
-            }}>
-              {settings?.unlimitedTime && devMode ? '∞' : timer.formatted}
-            </span>
-          </div>
-
-          {/* Bits */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 16 }}>💰</span>
-            <span style={{
-              fontFamily: 'JetBrains Mono, monospace', fontSize: 22, fontWeight: 700,
-              color: bits < 20 ? '#ef4444' : '#fbbf24'
-            }}>
-              {settings?.unlimitedBits && devMode ? '∞' : bits}
-            </span>
-            <span style={{ color: '#8892b0', fontSize: 12, fontFamily: 'Space Grotesk, sans-serif' }}>Bits</span>
-          </div>
-
-          {/* Spacer */}
-          <div style={{ flex: 1 }} />
-
-          {/* Stats toggle (mobile) */}
-          <button
-            onClick={() => setStatsOpen(s => !s)}
-            style={{
-              padding: '6px 12px', background: statsOpen ? 'rgba(0,180,255,0.15)' : 'transparent',
-              border: `1px solid ${statsOpen ? '#00b4ff' : '#2a3060'}`,
-              borderRadius: 6, color: statsOpen ? '#00b4ff' : '#8892b0',
-              fontSize: 12, cursor: 'pointer', fontFamily: 'Space Grotesk, sans-serif',
-              fontWeight: 600, whiteSpace: 'nowrap'
-            }}
-          >
-            📊 Stats
-          </button>
-
-          {/* End build (manual) */}
-          <button
-            onClick={endBuildPhase}
-            style={{
-              padding: '6px 14px',
-              background: 'linear-gradient(135deg, #ff6b35, #cc4a20)',
-              border: 'none', borderRadius: 6, color: 'white',
-              fontSize: 12, fontWeight: 700, cursor: 'pointer',
-              fontFamily: 'Space Grotesk, sans-serif', whiteSpace: 'nowrap'
-            }}
-          >
-            Finish Build →
-          </button>
-        </div>
-
-        {/* Main area */}
-        <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
-          {/* Workbench */}
-          <WorkbenchArea
-            equippedPartIds={equippedPartIds}
-            activeCombos={activeCombos}
-            activeConflicts={activeConflicts}
-            onPartClick={(part) => setSelectedPart(part)}
-            onRemovePart={handleUnequipPart}
-          />
-
-          {/* Stats Panel (collapsible on mobile) */}
-          <div style={{
-            width: statsOpen ? 220 : 0,
-            transition: 'width 0.3s',
-            overflow: 'hidden',
-            flexShrink: 0,
-            background: '#12172e',
-            borderLeft: '1px solid #2a3060'
-          }}>
-            {statsOpen && (
-              <StatsPanel
-                currentStats={currentStats}
-                requirements={effectiveRequirements}
-                activeCombos={activeCombos}
-                activeConflicts={activeConflicts}
-                isMystery={isMystery}
-                mysteryRevealed={mysteryRevealed}
-                settings={settings}
-                devMode={devMode}
-              />
-            )}
-          </div>
-        </div>
-
-        {/* Parts Tray */}
-        <PartsTray
-          bits={bits}
-          equippedPartIds={equippedPartIds}
-          onPartClick={setSelectedPart}
-          devMode={devMode}
-          settings={settings}
-        />
-
-        {/* Combo/Conflict notifications */}
-        {comboFlash && (
-          <div className="animate-slide-up" style={{
-            position: 'fixed', top: 80, left: '50%', transform: 'translateX(-50%)',
-            background: 'rgba(251, 191, 36, 0.15)', border: '1px solid #fbbf24',
-            borderRadius: 10, padding: '10px 20px', zIndex: 500,
-            fontFamily: 'Space Grotesk, sans-serif', fontSize: 14, fontWeight: 700, color: '#fbbf24'
-          }}>
-            ⚡ {comboFlash} activated!
-          </div>
-        )}
-        {conflictFlash && (
-          <div className="animate-slide-up" style={{
-            position: 'fixed', top: 80, left: '50%', transform: 'translateX(-50%)',
-            background: 'rgba(239, 68, 68, 0.15)', border: '1px solid #ef4444',
-            borderRadius: 10, padding: '10px 20px', zIndex: 500,
-            fontFamily: 'Space Grotesk, sans-serif', fontSize: 14, fontWeight: 700, color: '#ef4444'
-          }}>
-            ⚠ {conflictFlash} — Conflict detected!
-          </div>
-        )}
-
-        {/* Mystery reveal overlay */}
-        {isMystery && mysteryRevealed && !state.mysterMissionRevealed && (
-          <div className="animate-slam-in" style={{
-            position: 'fixed', inset: 0, background: 'rgba(10,14,26,0.9)',
-            zIndex: 600, display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}>
-            <div style={{ textAlign: 'center', padding: 32 }}>
-              <div style={{ fontSize: 48, marginBottom: 16 }}>🎲</div>
-              <h2 style={{ color: '#a78bfa', fontFamily: 'Space Grotesk, sans-serif', fontSize: 28, marginBottom: 8 }}>
-                Mission Revealed!
-              </h2>
-              <p style={{ color: '#8892b0', fontFamily: 'Space Grotesk, sans-serif' }}>
-                Requirements are now visible. You have 90 seconds to adapt!
-              </p>
-              <button
-                onClick={() => update({ mysterMissionRevealed: true })}
-                style={{
-                  marginTop: 20, padding: '12px 32px',
-                  background: 'linear-gradient(135deg, #a78bfa, #7c3aed)',
-                  border: 'none', borderRadius: 8, color: 'white',
-                  fontSize: 16, fontWeight: 700, cursor: 'pointer',
-                  fontFamily: 'Space Grotesk, sans-serif'
-                }}
-              >
-                Continue Building
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Part info popup */}
-        {selectedPart && (
-          <PartInfoPopup
-            part={selectedPart}
-            onClose={() => setSelectedPart(null)}
-            onEquip={handleEquipPart}
-            onUnequip={handleUnequipPart}
-            isEquipped={equippedPartIds.includes(selectedPart.id)}
-            canAfford={(settings?.unlimitedBits && devMode) || bits >= selectedPart.cost}
-            equippedPartIds={equippedPartIds}
-          />
-        )}
-
-        {/* Drag overlay */}
-        <DragOverlay>
-          {dragItem && (
-            <div style={{
-              padding: 12, background: '#1a1f3a',
-              border: `2px solid ${CATEGORY_COLORS[dragItem.category]}`,
-              borderRadius: 10, fontSize: 12, color: '#e8eaf6',
-              fontFamily: 'Space Grotesk, sans-serif', fontWeight: 600,
-              boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
-              pointerEvents: 'none', width: 90, textAlign: 'center'
-            }}>
-              <div style={{ fontSize: 24, marginBottom: 4 }}>{getPartEmoji(dragItem)}</div>
-              <div style={{ fontSize: 10 }}>{dragItem.name}</div>
-            </div>
-          )}
-        </DragOverlay>
-      </div>
-    </DndContext>
-  );
-}
-
-function WorkbenchArea({ equippedPartIds, activeCombos, activeConflicts, onPartClick, onRemovePart }) {
-  const { setNodeRef, isOver } = useDroppable({ id: 'workbench' });
-
-  const equippedParts = equippedPartIds.map(id => PARTS.find(p => p.id === id)).filter(Boolean);
-
+function Workbench({ children, equippedPartIds, onPartClick }) {
+  const { isOver, setNodeRef } = useDroppable({ id: 'workbench' });
   return (
     <div
       ref={setNodeRef}
       style={{
-        flex: 1, display: 'flex', flexDirection: 'column',
-        background: isOver ? 'rgba(0, 180, 255, 0.04)' : '#0a0e1a',
-        transition: 'background 0.2s',
-        position: 'relative', overflow: 'hidden'
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: isOver ? 'rgba(0,180,255,0.06)' : 'transparent',
+        border: `2px dashed ${isOver ? '#00b4ff' : 'transparent'}`,
+        borderRadius: 16,
+        transition: 'all 0.2s',
+        padding: '12px 8px',
+        minHeight: 260,
+        position: 'relative',
       }}
-      className="bg-grid"
     >
-      {/* Corner indicators */}
-      {isOver && (
-        <div style={{
-          position: 'absolute', inset: 0,
-          border: '2px dashed rgba(0, 180, 255, 0.4)',
-          borderRadius: 4, pointerEvents: 'none'
-        }} />
-      )}
-
-      {/* Robot visualization */}
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-        <RobotVisualization
-          equippedPartIds={equippedPartIds}
-          activeConflicts={activeConflicts}
-          activeCombos={activeCombos}
-        />
-      </div>
-
-      {/* Equipped parts list (bottom overlay) */}
-      {equippedParts.length > 0 && (
-        <div style={{
-          position: 'absolute', bottom: 8, left: 8, right: 8,
-          display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center'
-        }}>
-          {equippedParts.map(part => (
-            <EquippedPartChip
-              key={part.id}
-              part={part}
-              hasConflict={activeConflicts.some(c => c.parts?.includes(part.name))}
-              onClick={() => onPartClick(part)}
-            />
-          ))}
+      {children}
+      {/* Part count badge */}
+      {equippedPartIds.length > 0 && (
+        <div style={{ position: 'absolute', top: 8, right: 8, background: '#00b4ff', color: '#0a0e1a', borderRadius: 20, padding: '2px 8px', fontSize: 11, fontWeight: 700, fontFamily: 'JetBrains Mono, monospace' }}>
+          {equippedPartIds.length} parts
         </div>
       )}
     </div>
   );
 }
 
-function EquippedPartChip({ part, hasConflict, onClick }) {
-  const color = CATEGORY_COLORS[part.category];
-  const { setNodeRef, attributes, listeners, transform, isDragging } = useDraggable({
-    id: `workbench-${part.id}`,
-    data: { part, fromWorkbench: true }
+export default function BuildScreen({ state, goTo, equipPart, unequipPart, addToast, revealMysteryMission, update }) {
+  const { mission, bits, equippedPartIds, statModifiers, requirementOverrides, settings, devMode } = state;
+  const [showStats, setShowStats] = useState(false);
+  const [selectedPart, setSelectedPart] = useState(null);
+  const [mysteryRevealed, setMysteryRevealed] = useState(false);
+  const [effectiveMission, setEffectiveMission] = useState(mission);
+  const [revealAnim, setRevealAnim] = useState(false);
+  const prevComboRef = useRef(new Set());
+  const prevConflictRef = useRef(new Set());
+
+  const isMystery = mission?.specialRule === 'mystery';
+
+  const { stats, adjustedReqs, activeCombos, activeConflicts } = useScoring(
+    equippedPartIds, effectiveMission, statModifiers, requirementOverrides
+  );
+
+  // Combo/conflict toast notifications
+  useEffect(() => {
+    const currCombos = new Set(activeCombos.map(c => c.name));
+    for (const c of currCombos) {
+      if (!prevComboRef.current.has(c)) {
+        addToast(`⚡ ${c} activated!`, 'combo');
+      }
+    }
+    prevComboRef.current = currCombos;
+  }, [activeCombos.map(c => c.name).join(',')]);
+
+  useEffect(() => {
+    const currConflicts = new Set(activeConflicts.map(c => c.name));
+    for (const c of currConflicts) {
+      if (!prevConflictRef.current.has(c)) {
+        addToast(`⚠ ${c} — ${activeConflicts.find(x => x.name === c)?.description}`, 'conflict');
+      }
+    }
+    prevConflictRef.current = currConflicts;
+  }, [activeConflicts.map(c => c.name).join(',')]);
+
+  function handleTimerComplete() {
+    goTo(settings.skipCurveball ? SCREENS.QUESTION : SCREENS.CURVEBALL);
+  }
+
+  function handleTimerTick(t) {
+    // Mystery reveal at exactly 60 seconds remaining
+    if (isMystery && !mysteryRevealed && t === 60) {
+      setRevealAnim(true);
+      const revealed = revealMysteryMission();
+      setEffectiveMission(revealed);
+      setMysteryRevealed(true);
+      addToast('🔓 Mystery revealed! Adapt your build!', 'warning');
+      setTimeout(() => setRevealAnim(false), 3000);
+    }
+  }
+
+  const timerEnabled = !settings.unlimitedTime;
+  const { timeLeft } = useTimer(BUILD_SECONDS, {
+    enabled: timerEnabled,
+    onComplete: handleTimerComplete,
+    onTick: handleTimerTick,
   });
 
+  function handleDragEnd(event) {
+    const { active, over } = event;
+    if (!over) return;
+    if (active.id.startsWith('part-') && over.id === 'workbench') {
+      const partId = parseInt(active.id.replace('part-', ''));
+      handleEquip(partId);
+    }
+  }
+
+  function handleEquip(partId) {
+    const part = PARTS_BY_ID[partId];
+    if (!part) return;
+    if (equippedPartIds.includes(partId)) { setSelectedPart(null); return; }
+    if (!settings.unlimitedBits && bits < part.cost) { addToast(`Not enough Bits! Need ${part.cost}b`, 'warning'); return; }
+    if (SINGLE_EQUIP_CATEGORIES.has(part.category)) {
+      const existing = equippedPartIds.find(id => PARTS_BY_ID[id]?.category === part.category);
+      if (existing) { addToast(`Only one ${part.category} allowed`, 'warning'); return; }
+    }
+    // Light Scout Frame: max 5 modules
+    if (equippedPartIds.includes(1) && part.category !== 'frame') {
+      const nonFrame = equippedPartIds.filter(id => PARTS_BY_ID[id]?.category !== 'frame').length;
+      if (nonFrame >= 5) { addToast('Light Scout Frame: max 5 modules!', 'warning'); return; }
+    }
+    equipPart(partId);
+    setSelectedPart(null);
+  }
+
+  function handleUnequip(partId) {
+    unequipPart(partId);
+    setSelectedPart(null);
+    addToast('Part removed — Bits refunded', 'info');
+  }
+
+  const displayMission = effectiveMission;
+  const topStats = displayMission?.topStats || [];
+
   return (
-    <div
-      ref={setNodeRef}
-      {...attributes}
-      {...listeners}
-      onClick={onClick}
-      style={{
-        padding: '3px 8px',
-        background: hasConflict ? 'rgba(239,68,68,0.15)' : `${color}15`,
-        border: `1px solid ${hasConflict ? '#ef4444' : color}`,
-        borderRadius: 12, fontSize: 11, color: hasConflict ? '#ef4444' : color,
-        fontFamily: 'Space Grotesk, sans-serif', fontWeight: 600,
-        cursor: 'pointer', userSelect: 'none',
-        transform: isDragging ? `translate3d(${transform?.x || 0}px, ${transform?.y || 0}px, 0)` : undefined,
-        opacity: isDragging ? 0.5 : 1
-      }}
-    >
-      {hasConflict ? '⚠ ' : ''}{part.name}
-    </div>
-  );
-}
+    <DndContext onDragEnd={handleDragEnd}>
+      <div style={{ minHeight: '100vh', background: '#0a0e1a', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {/* Top Bar */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '10px 16px',
+          background: '#0d1225',
+          borderBottom: '1px solid #1a2040',
+          flexShrink: 0,
+        }}>
+          <Timer timeLeft={timerEnabled ? timeLeft : BUILD_SECONDS} totalSeconds={BUILD_SECONDS} />
 
-function StatsPanel({ currentStats, requirements, activeCombos, activeConflicts, isMystery, mysteryRevealed, settings, devMode }) {
-  const statLabels = { precision: 'Prec', strength: 'Str', perception: 'Perc', mobility: 'Mob', durability: 'Dur', adaptability: 'Adpt', communication: 'Comm', social: 'Soc' };
-
-  return (
-    <div style={{ padding: 16, overflowY: 'auto', height: '100%' }}>
-      {/* Radar */}
-      {requirements ? (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 10, color: '#00b4ff', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.1em', marginBottom: 8 }}>
-            STAT RADAR
+          <div style={{ textAlign: 'center', flex: 1 }}>
+            <div style={{ color: '#8892b0', fontSize: 10, fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+              {isMystery && !mysteryRevealed ? '???' : (displayMission?.title || 'Unknown')}
+            </div>
+            {/* Top stats mini */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 4, marginTop: 4 }}>
+              {topStats.slice(0, 3).map(s => {
+                const req = adjustedReqs?.[s] || 0;
+                const actual = stats[s] || 0;
+                const met = actual >= req;
+                return (
+                  <span key={s} style={{ fontSize: 13, opacity: met ? 1 : 0.5 }} title={`${s}: ${actual}/${req}`}>
+                    {STAT_ICONS[s]}
+                  </span>
+                );
+              })}
+            </div>
           </div>
-          <RadarChart requirements={requirements} playerStats={currentStats} size={170} />
-        </div>
-      ) : isMystery && !mysteryRevealed ? (
-        <div style={{ textAlign: 'center', padding: 20 }}>
-          <div style={{ fontSize: 24, marginBottom: 8 }}>🎲</div>
-          <div style={{ color: '#a78bfa', fontSize: 12, fontFamily: 'JetBrains Mono, monospace' }}>
-            MYSTERY<br/>MISSION
-          </div>
-        </div>
-      ) : null}
 
-      {/* Stat bars */}
-      <div style={{ marginBottom: 16 }}>
-        {Object.entries(currentStats).map(([stat, val]) => {
-          const req = requirements?.[stat] || 0;
-          const met = val >= req;
-          return (
-            <div key={stat} style={{ marginBottom: 8 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                <span style={{ fontSize: 10, color: '#8892b0', fontFamily: 'JetBrains Mono, monospace' }}>{statLabels[stat]}</span>
-                <span style={{ fontSize: 10, color: req > 0 ? (met ? '#34d399' : '#ef4444') : '#8892b0', fontFamily: 'JetBrains Mono, monospace' }}>
-                  {val}{req > 0 ? `/${req}` : ''}
-                </span>
-              </div>
-              <div style={{ height: 4, background: '#1a1f3a', borderRadius: 2 }}>
-                <div style={{
-                  height: '100%', borderRadius: 2, transition: 'width 0.3s',
-                  width: `${Math.min(100, (val / 5) * 100)}%`,
-                  background: req > 0 ? (met ? '#34d399' : '#ef4444') : '#00b4ff'
-                }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 18, fontWeight: 700, color: bits < 10 ? '#ef4444' : '#00b4ff' }}>
+                {bits}b
               </div>
             </div>
-          );
-        })}
+            <button
+              onClick={() => setShowStats(s => !s)}
+              style={{
+                background: showStats ? 'rgba(0,180,255,0.2)' : 'rgba(255,255,255,0.05)',
+                border: `1px solid ${showStats ? 'rgba(0,180,255,0.5)' : '#2a3060'}`,
+                borderRadius: 10, padding: '6px 10px',
+                color: showStats ? '#00b4ff' : '#8892b0',
+                fontSize: 14, cursor: 'pointer',
+                fontFamily: 'Space Grotesk, sans-serif', fontWeight: 600,
+              }}
+            >
+              📊
+            </button>
+          </div>
+        </div>
+
+        {/* Mystery reveal animation */}
+        {revealAnim && (
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 100,
+            background: 'rgba(168,85,247,0.2)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            pointerEvents: 'none',
+          }}>
+            <div className="animate-slam-in" style={{
+              background: '#1a0f3a', border: '3px solid #a855f7',
+              borderRadius: 20, padding: '32px 40px', textAlign: 'center',
+              boxShadow: '0 0 60px rgba(168,85,247,0.6)',
+            }}>
+              <div style={{ fontSize: 40, marginBottom: 8 }}>🔓</div>
+              <div style={{ color: '#a855f7', fontFamily: 'JetBrains Mono, monospace', fontSize: 18, fontWeight: 700 }}>MYSTERY REVEALED!</div>
+              <div style={{ color: '#e8eaf6', fontWeight: 700, fontSize: 20, marginTop: 8 }}>{effectiveMission?.title}</div>
+              <div style={{ color: '#8892b0', fontSize: 13, marginTop: 4 }}>60 seconds to adapt!</div>
+            </div>
+          </div>
+        )}
+
+        {/* Main content */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {/* Workbench */}
+          <Workbench equippedPartIds={equippedPartIds} onPartClick={p => setSelectedPart(p)}>
+            {/* Stats overlay */}
+            {showStats && adjustedReqs && (
+              <div style={{
+                position: 'absolute', inset: 0, zIndex: 10,
+                background: 'rgba(10,14,26,0.92)',
+                borderRadius: 14,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: 12,
+              }}>
+                <StatsRadar stats={stats} requirements={adjustedReqs} />
+              </div>
+            )}
+
+            <RobotVisualization equippedPartIds={equippedPartIds} />
+
+            {/* Stats overlay (always-visible dev mode) */}
+            {devMode && settings.showStatsOverlay && (
+              <div style={{
+                position: 'absolute', top: 8, left: 8,
+                background: 'rgba(0,0,0,0.8)', borderRadius: 8, padding: '6px 10px',
+                fontSize: 10, fontFamily: 'JetBrains Mono, monospace', color: '#00b4ff',
+              }}>
+                {Object.entries(stats).map(([k, v]) => (
+                  <div key={k}>{k}: {v}{adjustedReqs ? `/${adjustedReqs[k] || 0}` : ''}</div>
+                ))}
+              </div>
+            )}
+          </Workbench>
+
+          {/* Parts tray */}
+          <PartsTray
+            equippedPartIds={equippedPartIds}
+            bits={bits}
+            settings={settings}
+            onPartClick={setSelectedPart}
+          />
+        </div>
+
+        {/* Dev skip button */}
+        {devMode && (
+          <button
+            onClick={() => goTo(settings.skipCurveball ? SCREENS.QUESTION : SCREENS.CURVEBALL)}
+            style={{
+              position: 'fixed', bottom: 120, right: 16,
+              background: 'rgba(255,107,53,0.9)', color: 'white',
+              border: 'none', borderRadius: 10, padding: '8px 14px',
+              fontSize: 12, fontWeight: 700, cursor: 'pointer',
+              fontFamily: 'JetBrains Mono, monospace', zIndex: 200,
+            }}
+          >
+            Skip Build →
+          </button>
+        )}
       </div>
 
-      {/* Combos */}
-      {activeCombos.length > 0 && (
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 10, color: '#fbbf24', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.1em', marginBottom: 6 }}>
-            ⚡ COMBOS ACTIVE
-          </div>
-          {activeCombos.map(combo => (
-            <div key={combo} style={{
-              padding: '4px 8px', background: 'rgba(251,191,36,0.1)',
-              border: '1px solid rgba(251,191,36,0.3)', borderRadius: 6,
-              fontSize: 11, color: '#fbbf24', fontFamily: 'Space Grotesk, sans-serif', marginBottom: 4
-            }}>
-              {combo}
-            </div>
-          ))}
-        </div>
+      {/* Part info popup */}
+      {selectedPart && (
+        <PartInfoPopup
+          part={selectedPart}
+          isEquipped={equippedPartIds.includes(selectedPart.id)}
+          canAfford={settings.unlimitedBits || bits >= selectedPart.cost}
+          onAdd={() => handleEquip(selectedPart.id)}
+          onRemove={() => handleUnequip(selectedPart.id)}
+          onClose={() => setSelectedPart(null)}
+        />
       )}
 
-      {/* Conflicts */}
-      {activeConflicts.length > 0 && (
-        <div>
-          <div style={{ fontSize: 10, color: '#ef4444', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.1em', marginBottom: 6 }}>
-            ⚠ CONFLICTS
-          </div>
-          {activeConflicts.map(conflict => (
-            <div key={conflict.key} style={{
-              padding: '4px 8px', background: 'rgba(239,68,68,0.1)',
-              border: '1px solid rgba(239,68,68,0.3)', borderRadius: 6,
-              fontSize: 11, color: '#ef4444', fontFamily: 'Space Grotesk, sans-serif', marginBottom: 4
-            }}>
-              {conflict.name}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+      {/* Toasts */}
+      <ToastContainer toasts={state.toasts} />
+    </DndContext>
   );
-}
-
-function getPartEmoji(part) {
-  const map = {
-    1: '🏃', 2: '🤖', 3: '🛡️', 4: '🌊',
-    5: '🤌', 6: '✂️', 7: '💪', 8: '🛠️', 9: '🤲',
-    10: '📷', 11: '🌡️', 12: '📡', 13: '🎤', 14: '👆', 15: '🔬',
-    16: '💾', 17: '🧠', 18: '🔭', 19: '⚖️', 20: '⚡',
-    21: '🔊', 22: '🗣️', 23: '😊', 24: '👋', 25: '🌐',
-    26: '🔋', 27: '🔋', 28: '☀️', 29: '☢️',
-    30: '💧', 31: '🔥', 32: '🏥', 33: '🪝', 34: '🔧',
-    35: '🥷', 36: '📻', 37: '🛡️', 38: '🚀', 39: '🎯', 40: '😄'
-  };
-  return map[part?.id] || '⚙️';
 }
