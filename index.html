@@ -18,6 +18,29 @@
       </div>
     </div>
     <script>
+      (function() {
+        var protocolWarning = document.getElementById('err');
+        if (window.location.protocol === 'file:' && protocolWarning) {
+          protocolWarning.textContent = 'This app cannot run from file://. Start a server with "npm run dev" or serve the dist/ folder.';
+        }
+
+        // If someone serves the repository root instead of the build output,
+        // automatically jump to /dist where Vite's compiled app lives.
+        var isRepoRoot = window.location.pathname.endsWith('/index.html') || window.location.pathname === '/';
+        var alreadyInDist = window.location.pathname.includes('/dist/');
+        if (!alreadyInDist && window.location.protocol !== 'file:' && isRepoRoot) {
+          fetch('./dist/index.html', { method: 'HEAD' })
+            .then(function(res) {
+              if (res.ok) {
+                window.location.replace('./dist/');
+              }
+            })
+            .catch(function() {
+              // Ignore — normal dev mode won't have a dist folder.
+            });
+        }
+      })();
+
       window.addEventListener('error', function(e) {
         var el = document.getElementById('err');
         if (el) el.textContent = 'JS Error: ' + (e.message || 'unknown') + (e.filename ? ' @ ' + e.filename : '');
@@ -26,6 +49,15 @@
         var el = document.getElementById('err');
         if (el) el.textContent = 'Promise Error: ' + (e.reason?.message || e.reason || 'unknown');
       });
+
+      // If React hasn't mounted after a few seconds, surface guidance instead of a silent loader.
+      setTimeout(function() {
+        var loader = document.getElementById('app-loading');
+        var el = document.getElementById('err');
+        if (loader && loader.isConnected && el && !el.textContent) {
+          el.textContent = 'App failed to start. If you are hosting the repo root, run npm run build and serve dist/. Otherwise run npm run dev.';
+        }
+      }, 4000);
     </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
