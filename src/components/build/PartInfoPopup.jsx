@@ -7,6 +7,11 @@ const STAT_LABELS = {
   communication: 'Communication', social: 'Social'
 };
 
+const STAT_ICONS = {
+  precision: '🎯', strength: '💪', perception: '👁️', mobility: '🏃',
+  durability: '🛡️', adaptability: '🧠', communication: '📡', social: '🤝'
+};
+
 export default function PartInfoPopup({ part, onClose, onEquip, onUnequip, isEquipped, canAfford, equippedPartIds = [] }) {
   if (!part) return null;
 
@@ -15,6 +20,9 @@ export default function PartInfoPopup({ part, onClose, onEquip, onUnequip, isEqu
 
   const conflictingEquipped = (part.conflictsWith || []).filter(id => equippedPartIds.includes(id));
   const conflictingPart = conflictingEquipped.length > 0 ? PARTS.find(p => p.id === conflictingEquipped[0]) : null;
+
+  const goodStats = Object.entries(part.benefits).filter(([, v]) => v > 0).map(([s]) => s);
+  const badStats = Object.entries(part.tradeoffs).filter(([, v]) => v < 0).map(([s]) => s);
 
   return (
     <>
@@ -57,12 +65,20 @@ export default function PartInfoPopup({ part, onClose, onEquip, onUnequip, isEqu
             }}>
               {CATEGORY_LABELS[part.category]}
             </span>
-            <h3 style={{
-              fontFamily: 'Space Grotesk, sans-serif', fontSize: 22, fontWeight: 700,
-              color: '#e8eaf6', margin: 0
-            }}>
-              {part.name}
-            </h3>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+              <h3 style={{
+                fontFamily: 'Space Grotesk, sans-serif', fontSize: 22, fontWeight: 700,
+                color: '#e8eaf6', margin: 0
+              }}>
+                {part.name}
+              </h3>
+              <span style={{
+                fontFamily: 'JetBrains Mono, monospace', fontSize: 16, fontWeight: 700,
+                color: '#fbbf24'
+              }}>
+                {part.cost}b
+              </span>
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -90,48 +106,25 @@ export default function PartInfoPopup({ part, onClose, onEquip, onUnequip, isEqu
           {part.description}
         </p>
 
-        {/* Stats row */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 20 }}>
-          <StatBadge label="Cost" value={`${part.cost} Bits`} color="#fbbf24" />
-          <StatBadge label="Weight" value={`${part.weight} kg`} color="#8892b0" />
-          <StatBadge label="Power" value={`${part.power} W`} color="#fbbf24" />
-        </div>
-
-        {/* Benefits */}
-        {Object.keys(part.benefits).length > 0 && (
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 11, color: '#8892b0', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.1em', marginBottom: 8 }}>
-              STAT BONUSES
-            </div>
-            {Object.entries(part.benefits).map(([stat, val]) => (
-              <div key={stat} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                <span style={{ color: '#34d399', fontSize: 14, fontWeight: 700, fontFamily: 'JetBrains Mono, monospace', minWidth: 36 }}>
-                  +{val}
-                </span>
-                <span style={{ color: '#e8eaf6', fontSize: 14, fontFamily: 'Space Grotesk, sans-serif' }}>
-                  {STAT_LABELS[stat] || stat}
-                </span>
+        {/* GOOD AT / BAD AT icon rows */}
+        {(goodStats.length > 0 || badStats.length > 0) && (
+          <div style={{ marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {goodStats.length > 0 && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ color: '#34d399', fontSize: 11, fontWeight: 700, fontFamily: 'JetBrains Mono, monospace' }}>GOOD AT:</span>
+                {goodStats.map(stat => (
+                  <span key={stat} style={{ fontSize: 22 }} title={STAT_LABELS[stat]}>{STAT_ICONS[stat] || '⚙️'}</span>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
-
-        {/* Tradeoffs */}
-        {Object.keys(part.tradeoffs).length > 0 && (
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 11, color: '#8892b0', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.1em', marginBottom: 8 }}>
-              TRADEOFFS
-            </div>
-            {Object.entries(part.tradeoffs).map(([stat, val]) => (
-              <div key={stat} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                <span style={{ color: '#ef4444', fontSize: 14, fontWeight: 700, fontFamily: 'JetBrains Mono, monospace', minWidth: 36 }}>
-                  {val}
-                </span>
-                <span style={{ color: '#e8eaf6', fontSize: 14, fontFamily: 'Space Grotesk, sans-serif' }}>
-                  {STAT_LABELS[stat] || stat}
-                </span>
+            )}
+            {badStats.length > 0 && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ color: '#ef4444', fontSize: 11, fontWeight: 700, fontFamily: 'JetBrains Mono, monospace' }}>BAD AT:</span>
+                {badStats.map(stat => (
+                  <span key={stat} style={{ fontSize: 22 }} title={STAT_LABELS[stat]}>{STAT_ICONS[stat] || '⚙️'}</span>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         )}
 
@@ -228,22 +221,6 @@ export default function PartInfoPopup({ part, onClose, onEquip, onUnequip, isEqu
         </div>
       </div>
     </>
-  );
-}
-
-function StatBadge({ label, value, color }) {
-  return (
-    <div style={{
-      background: '#1a1f3a', borderRadius: 8, padding: '10px 12px',
-      border: '1px solid #2a3060', textAlign: 'center'
-    }}>
-      <div style={{ color: '#8892b0', fontSize: 10, fontFamily: 'JetBrains Mono, monospace', marginBottom: 4, letterSpacing: '0.05em' }}>
-        {label}
-      </div>
-      <div style={{ color, fontSize: 15, fontWeight: 700, fontFamily: 'JetBrains Mono, monospace' }}>
-        {value}
-      </div>
-    </div>
   );
 }
 

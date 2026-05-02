@@ -4,7 +4,7 @@ import { SCREENS } from '../../hooks/useGameState';
 import { useTimer } from '../../hooks/useTimer';
 
 const QUESTION_TIME = 15;
-const QUESTIONS_PER_ROUND = 3;
+const QUESTIONS_PER_ROUND = 1;
 
 function pickQuestions() {
   const shuffled = [...QUESTIONS].sort(() => Math.random() - 0.5);

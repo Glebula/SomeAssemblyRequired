@@ -153,7 +153,7 @@ function generateScenarios(mission, equippedPartIds, stats, activeConflicts, act
   // Final verdict
   scenarios.push({ text: 'Mission complete — field test concluding...', outcome: 'final' });
 
-  return { scenarios: scenarios.slice(0, 8), glitchOccurred: glitchOccurred && !hasRepairKit };
+  return { scenarios: scenarios.slice(0, 4), glitchOccurred: glitchOccurred && !hasRepairKit };
 }
 
 export default function SimulationScreen({ state, goTo, update }) {
@@ -193,7 +193,7 @@ export default function SimulationScreen({ state, goTo, update }) {
 
     // Play out scenarios one by one
     let idx = 0;
-    const stepDuration = 2000;
+    const stepDuration = 1800;
 
     intervalRef.current = setInterval(() => {
       setStep(idx);

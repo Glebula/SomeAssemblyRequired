@@ -118,17 +118,11 @@ export default function CodeEntry({ goTo, setMission, devMode, settings }) {
         <div className="animate-slide-down-in">
           <h2 style={{
             fontFamily: 'Space Grotesk, sans-serif',
-            fontSize: 24, fontWeight: 700, color: '#e8eaf6',
-            marginBottom: 8, marginTop: 0
+            fontSize: 40, fontWeight: 700, color: '#e8eaf6',
+            marginBottom: 40, marginTop: 0
           }}>
-            Draw a Mission Card
+            Enter Mission Code
           </h2>
-          <p style={{
-            color: '#8892b0', marginBottom: 32, fontSize: 15,
-            fontFamily: 'Space Grotesk, sans-serif'
-          }}>
-            Enter the code from your physical mission card below.
-          </p>
 
           {/* Dev mode: searchable dropdown */}
           {devMode && (

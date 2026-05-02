@@ -4,14 +4,14 @@ import { SCREENS } from '../../hooks/useGameState';
 import { PARTS, CATEGORY_COLORS, SINGLE_SLOT_CATEGORIES } from '../../data/parts';
 import { MISSIONS } from '../../data/missions';
 import { CURVEBALLS } from '../../data/curveballs';
-import { calculateStats, getActiveCombos, getActiveConflicts, calculateTotalWeight, calculateTotalPower, getPowerBudget } from '../../utils/scoring';
+import { calculateStats, getActiveCombos, getActiveConflicts } from '../../utils/scoring';
 import { useTimer } from '../../hooks/useTimer';
 import RadarChart from '../common/RadarChart';
 import PartsTray from '../build/PartsTray';
 import RobotVisualization from '../build/RobotVisualization';
 import PartInfoPopup from '../build/PartInfoPopup';
 
-const BUILD_TIME = 180; // 3 minutes
+const BUILD_TIME = 120; // 2 minutes
 const MYSTERY_REVEAL_TIME = 90; // 1:30 remaining
 
 export default function BuildScreen({ state, goTo, update, equipPart, unequipPart }) {
@@ -73,9 +73,6 @@ export default function BuildScreen({ state, goTo, update, equipPart, unequipPar
   const activeCombos = getActiveCombos(equippedPartIds, mission?.category);
   const activeConflicts = getActiveConflicts(equippedPartIds);
   const currentStats = calculateStats(equippedPartIds, activeConflicts, activeCombos, mission);
-  const totalWeight = calculateTotalWeight(equippedPartIds);
-  const totalPower = calculateTotalPower(equippedPartIds);
-  const powerBudget = getPowerBudget(equippedPartIds);
 
   const effectiveRequirements = isMystery
     ? (mysteryRevealed ? mysteryRequirements : null)
@@ -148,9 +145,6 @@ export default function BuildScreen({ state, goTo, update, equipPart, unequipPar
   }
 
   const timerColor = timer.seconds <= 30 ? '#ef4444' : timer.seconds <= 60 ? '#fbbf24' : '#00f0ff';
-  const weightMax = settings?.noWeightLimit && devMode ? 9999 : 100;
-  const weightPct = Math.min(100, (totalWeight / weightMax) * 100);
-  const powerOverBudget = !settings?.noPowerLimit || !devMode ? totalPower > powerBudget : false;
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
@@ -169,7 +163,7 @@ export default function BuildScreen({ state, goTo, update, equipPart, unequipPar
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 12, color: '#8892b0', fontFamily: 'JetBrains Mono, monospace' }}>⏱</span>
             <span style={{
-              fontFamily: 'JetBrains Mono, monospace', fontSize: 24, fontWeight: 700,
+              fontFamily: 'JetBrains Mono, monospace', fontSize: 28, fontWeight: 700,
               color: timerColor,
               animation: timer.seconds <= 10 ? 'blink 1s infinite' : undefined
             }}>
@@ -181,7 +175,7 @@ export default function BuildScreen({ state, goTo, update, equipPart, unequipPar
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ fontSize: 16 }}>💰</span>
             <span style={{
-              fontFamily: 'JetBrains Mono, monospace', fontSize: 18, fontWeight: 700,
+              fontFamily: 'JetBrains Mono, monospace', fontSize: 22, fontWeight: 700,
               color: bits < 20 ? '#ef4444' : '#fbbf24'
             }}>
               {settings?.unlimitedBits && devMode ? '∞' : bits}
@@ -189,41 +183,8 @@ export default function BuildScreen({ state, goTo, update, equipPart, unequipPar
             <span style={{ color: '#8892b0', fontSize: 12, fontFamily: 'Space Grotesk, sans-serif' }}>Bits</span>
           </div>
 
-          {/* Power meter */}
-          <div style={{ flex: 1, minWidth: 100 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-              <span style={{ fontSize: 10, color: '#8892b0', fontFamily: 'JetBrains Mono, monospace' }}>⚡ PWR</span>
-              <span style={{ fontSize: 10, color: powerOverBudget ? '#ef4444' : '#fbbf24', fontFamily: 'JetBrains Mono, monospace' }}>
-                {totalPower}/{powerBudget === 10 ? '?' : powerBudget}
-              </span>
-            </div>
-            <div style={{ height: 5, background: '#1a1f3a', borderRadius: 3 }}>
-              <div style={{
-                height: '100%', borderRadius: 3,
-                width: `${Math.min(100, (totalPower / Math.max(powerBudget, 1)) * 100)}%`,
-                background: powerOverBudget ? '#ef4444' : 'linear-gradient(90deg, #fbbf24, #f59e0b)',
-                transition: 'width 0.3s'
-              }} />
-            </div>
-          </div>
-
-          {/* Weight meter */}
-          <div style={{ flex: 1, minWidth: 100 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-              <span style={{ fontSize: 10, color: '#8892b0', fontFamily: 'JetBrains Mono, monospace' }}>⚖ WT</span>
-              <span style={{ fontSize: 10, color: weightPct > 80 ? '#ef4444' : '#8892b0', fontFamily: 'JetBrains Mono, monospace' }}>
-                {totalWeight}kg
-              </span>
-            </div>
-            <div style={{ height: 5, background: '#1a1f3a', borderRadius: 3 }}>
-              <div style={{
-                height: '100%', borderRadius: 3,
-                width: `${weightPct}%`,
-                background: weightPct > 80 ? 'linear-gradient(90deg, #ef4444, #dc2626)' : 'linear-gradient(90deg, #00b4ff, #0080cc)',
-                transition: 'width 0.3s'
-              }} />
-            </div>
-          </div>
+          {/* Spacer */}
+          <div style={{ flex: 1 }} />
 
           {/* Stats toggle (mobile) */}
           <button

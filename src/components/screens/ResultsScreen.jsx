@@ -1,11 +1,21 @@
 import { useState } from 'react';
 import { SCREENS } from '../../hooks/useGameState';
-import { PARTS } from '../../data/parts';
 
 const STAT_LABELS = {
   precision: 'Precision', strength: 'Strength', perception: 'Perception',
   mobility: 'Mobility', durability: 'Durability', adaptability: 'Adaptability',
   communication: 'Communication', social: 'Social'
+};
+
+const STAT_PART_TIP = {
+  precision: 'Precision Servo Arms or Pressure Sensors',
+  strength: 'Heavy Lift Claws or Reinforced Armor',
+  perception: 'Thermal Camera or LIDAR Array',
+  mobility: 'Speed Boosters or Light Scout Frame',
+  durability: 'Heavy Tank Frame or Reinforced Armor',
+  adaptability: 'Adaptive Learning Module or Decision Engine',
+  communication: 'Voice Synthesizer or Translation Module',
+  social: 'Emotion Display Screen or Companion Personality Module',
 };
 
 const GRADE_CONFIG = {
@@ -29,7 +39,7 @@ export default function ResultsScreen({ state, goTo, startNewGame, addScore }) {
   const { total, grade, breakdown, activeCombos, activeConflicts } = simulationResult;
   const gradeConfig = GRADE_CONFIG[grade] || GRADE_CONFIG.failed;
 
-  // Find best part and biggest weakness
+  // Find best stat (most above requirement) and biggest weakness (most below requirement)
   let biggestWeakness = null;
   let biggestWeaknessGap = 0;
   let bestStat = null;
@@ -44,10 +54,13 @@ export default function ResultsScreen({ state, goTo, startNewGame, addScore }) {
     });
   }
 
-  // Find best part
-  const bestPart = equippedPartIds.length > 0
-    ? PARTS.find(p => p.id === equippedPartIds[0])
-    : null;
+  // Determine "what worked" bullet
+  const allMet = breakdown && Object.values(breakdown).every(d => d.met !== false && (d.actual >= d.requirement));
+  const whatWorkedText = allMet || (!bestStat && bestStatOver === 0)
+    ? 'Well-rounded build — all stats met!'
+    : bestStat
+      ? `${STAT_LABELS[bestStat]} was ${bestStatOver} point${bestStatOver > 1 ? 's' : ''} above target`
+      : 'All requirements met!';
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0e1a', padding: '24px' }} className="bg-grid">
@@ -89,7 +102,7 @@ export default function ResultsScreen({ state, goTo, startNewGame, addScore }) {
             {gradeConfig.message}
           </p>
 
-          {/* Share score */}
+          {/* Leaderboard add */}
           {settings?.leaderboardMode && (
             <div style={{ marginTop: 20 }}>
               <AddToLeaderboard score={total} missionTitle={mission?.title} addScore={addScore} />
@@ -97,88 +110,60 @@ export default function ResultsScreen({ state, goTo, startNewGame, addScore }) {
           )}
         </div>
 
-        {/* Stat breakdown */}
-        {breakdown && Object.keys(breakdown).length > 0 && (
-          <div style={{
-            background: '#12172e', border: '1px solid #2a3060',
-            borderRadius: 16, padding: 24, marginBottom: 20
-          }}>
-            <h3 style={{
-              fontFamily: 'JetBrains Mono, monospace', fontSize: 12, color: '#8892b0',
-              letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 20, marginTop: 0
-            }}>
-              STAT BREAKDOWN
-            </h3>
-            {Object.entries(breakdown).map(([stat, data]) => (
-              <StatBar key={stat} stat={stat} data={data} />
-            ))}
-          </div>
-        )}
-
-        {/* Insights */}
+        {/* PERFORMANCE card — 3 bullets */}
         <div style={{
           background: '#12172e', border: '1px solid #2a3060',
           borderRadius: 16, padding: 24, marginBottom: 24
         }}>
           <h3 style={{
             fontFamily: 'JetBrains Mono, monospace', fontSize: 12, color: '#8892b0',
-            letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 16, marginTop: 0
+            letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 20, marginTop: 0
           }}>
-            PERFORMANCE INSIGHTS
+            PERFORMANCE
           </h3>
 
+          {/* What worked */}
+          <div style={{
+            padding: 14, background: 'rgba(52,211,153,0.08)',
+            border: '1px solid rgba(52,211,153,0.3)', borderRadius: 10, marginBottom: 12
+          }}>
+            <div style={{ color: '#34d399', fontSize: 14, fontWeight: 700, fontFamily: 'Space Grotesk, sans-serif' }}>
+              ✅ What worked: {whatWorkedText}
+            </div>
+          </div>
+
+          {/* Biggest gap */}
           {biggestWeakness && biggestWeaknessGap > 0 && (
             <div style={{
-              padding: 12, background: 'rgba(239,68,68,0.08)',
-              border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, marginBottom: 12
+              padding: 14, background: 'rgba(239,68,68,0.08)',
+              border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, marginBottom: 12
             }}>
-              <div style={{ color: '#ef4444', fontSize: 14, fontWeight: 700, fontFamily: 'Space Grotesk, sans-serif', marginBottom: 4 }}>
-                ⬇ Biggest Weakness: {STAT_LABELS[biggestWeakness]}
-              </div>
-              <div style={{ color: '#8892b0', fontSize: 13, fontFamily: 'Space Grotesk, sans-serif' }}>
-                You were {biggestWeaknessGap} point{biggestWeaknessGap > 1 ? 's' : ''} short. Consider adding a part that boosts {STAT_LABELS[biggestWeakness]} next time.
+              <div style={{ color: '#ef4444', fontSize: 14, fontWeight: 700, fontFamily: 'Space Grotesk, sans-serif' }}>
+                ❌ Biggest gap: {STAT_LABELS[biggestWeakness]} was {biggestWeaknessGap} point{biggestWeaknessGap > 1 ? 's' : ''} short
               </div>
             </div>
           )}
 
-          {bestStat && bestStatOver > 0 && (
+          {/* Tip */}
+          {biggestWeakness && STAT_PART_TIP[biggestWeakness] && (
             <div style={{
-              padding: 12, background: 'rgba(52,211,153,0.08)',
-              border: '1px solid rgba(52,211,153,0.3)', borderRadius: 8, marginBottom: 12
+              padding: 14, background: 'rgba(0,180,255,0.08)',
+              border: '1px solid rgba(0,180,255,0.25)', borderRadius: 10
             }}>
-              <div style={{ color: '#34d399', fontSize: 14, fontWeight: 700, fontFamily: 'Space Grotesk, sans-serif', marginBottom: 4 }}>
-                ⬆ Best Stat: {STAT_LABELS[bestStat]}
-              </div>
-              <div style={{ color: '#8892b0', fontSize: 13, fontFamily: 'Space Grotesk, sans-serif' }}>
-                Exceeded the requirement by {bestStatOver} point{bestStatOver > 1 ? 's' : ''}!
+              <div style={{ color: '#00b4ff', fontSize: 14, fontWeight: 700, fontFamily: 'Space Grotesk, sans-serif' }}>
+                💡 Tip: Boost {STAT_LABELS[biggestWeakness]} next time with {STAT_PART_TIP[biggestWeakness]}
               </div>
             </div>
           )}
 
-          {activeCombos && activeCombos.length > 0 && (
+          {/* If no gaps at all */}
+          {!biggestWeakness && (
             <div style={{
-              padding: 12, background: 'rgba(251,191,36,0.08)',
-              border: '1px solid rgba(251,191,36,0.3)', borderRadius: 8, marginBottom: 12
+              padding: 14, background: 'rgba(0,180,255,0.08)',
+              border: '1px solid rgba(0,180,255,0.25)', borderRadius: 10
             }}>
-              <div style={{ color: '#fbbf24', fontSize: 14, fontWeight: 700, fontFamily: 'Space Grotesk, sans-serif', marginBottom: 4 }}>
-                ⚡ Combos Fired
-              </div>
-              <div style={{ color: '#8892b0', fontSize: 13, fontFamily: 'Space Grotesk, sans-serif' }}>
-                {activeCombos.join(', ')}
-              </div>
-            </div>
-          )}
-
-          {activeConflicts && activeConflicts.length > 0 && (
-            <div style={{
-              padding: 12, background: 'rgba(239,68,68,0.08)',
-              border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8
-            }}>
-              <div style={{ color: '#ef4444', fontSize: 14, fontWeight: 700, fontFamily: 'Space Grotesk, sans-serif', marginBottom: 4 }}>
-                ⚠ Conflicts Penalized
-              </div>
-              <div style={{ color: '#8892b0', fontSize: 13, fontFamily: 'Space Grotesk, sans-serif' }}>
-                {activeConflicts.map(c => c.name).join(', ')}
+              <div style={{ color: '#00b4ff', fontSize: 14, fontWeight: 700, fontFamily: 'Space Grotesk, sans-serif' }}>
+                💡 Tip: Try a higher difficulty for more of a challenge!
               </div>
             </div>
           )}
@@ -218,46 +203,6 @@ export default function ResultsScreen({ state, goTo, startNewGame, addScore }) {
             </button>
           )}
         </div>
-      </div>
-    </div>
-  );
-}
-
-function StatBar({ stat, data }) {
-  const { requirement, actual, met } = data;
-  const maxVal = Math.max(requirement, actual, 1);
-  const reqPct = (requirement / 5) * 100;
-  const actualPct = (actual / 5) * 100;
-
-  return (
-    <div style={{ marginBottom: 16 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-        <span style={{ fontSize: 13, color: '#e8eaf6', fontFamily: 'Space Grotesk, sans-serif', fontWeight: 600 }}>
-          {STAT_LABELS[stat]}
-        </span>
-        <span style={{
-          fontSize: 12, fontFamily: 'JetBrains Mono, monospace', fontWeight: 700,
-          color: met ? '#34d399' : '#ef4444'
-        }}>
-          {actual}/{requirement}
-        </span>
-      </div>
-      <div style={{ position: 'relative', height: 10, background: '#1a1f3a', borderRadius: 5 }}>
-        {/* Requirement bar (faint) */}
-        <div style={{
-          position: 'absolute', top: 0, left: 0,
-          height: '100%', width: `${reqPct}%`,
-          background: 'rgba(136,146,176,0.2)', borderRadius: 5
-        }} />
-        {/* Actual bar */}
-        <div style={{
-          position: 'absolute', top: 0, left: 0,
-          height: '100%', width: `${actualPct}%`,
-          background: met
-            ? 'linear-gradient(90deg, #34d399, #10b981)'
-            : 'linear-gradient(90deg, #ef4444, #dc2626)',
-          borderRadius: 5, transition: 'width 0.8s ease'
-        }} />
       </div>
     </div>
   );
@@ -305,4 +250,3 @@ function AddToLeaderboard({ score, missionTitle, addScore }) {
     </div>
   );
 }
-

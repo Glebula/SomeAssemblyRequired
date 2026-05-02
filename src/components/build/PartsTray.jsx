@@ -67,7 +67,7 @@ export default function PartsTray({ bits, equippedPartIds, onPartClick, devMode,
         overflowX: 'auto',
         padding: '12px',
         gap: 10,
-        minHeight: 130,
+        minHeight: 150,
         scrollbarWidth: 'thin'
       }}>
         {filteredParts.map(part => (
@@ -108,13 +108,13 @@ function DraggablePart({ part, bits, isEquipped, isSingleSlotTaken, onClick, dev
   const style = {
     position: 'relative',
     flex: '0 0 auto',
-    width: 100,
+    width: 120,
     background: isEquipped
       ? `${color}15`
       : disabled ? '#0d1120' : '#1a1f3a',
     border: `1.5px solid ${isEquipped ? color : disabled ? '#1a1f3a' : '#2a3060'}`,
     borderRadius: 10,
-    padding: 10,
+    padding: 12,
     cursor: disabled ? 'not-allowed' : 'pointer',
     opacity: disabled ? 0.45 : 1,
     transition: 'all 0.15s',
@@ -143,13 +143,13 @@ function DraggablePart({ part, bits, isEquipped, isSingleSlotTaken, onClick, dev
       )}
 
       {/* Part emoji */}
-      <div style={{ fontSize: 24, textAlign: 'center', marginBottom: 6 }}>
+      <div style={{ fontSize: 32, textAlign: 'center', marginBottom: 6 }}>
         {getPartEmoji(part)}
       </div>
 
       {/* Part name */}
       <div style={{
-        fontSize: 10, color: isEquipped ? color : '#8892b0',
+        fontSize: 11, color: isEquipped ? color : '#8892b0',
         fontFamily: 'Space Grotesk, sans-serif', fontWeight: 600,
         textAlign: 'center', lineHeight: 1.3,
         overflow: 'hidden', display: '-webkit-box',
@@ -161,7 +161,7 @@ function DraggablePart({ part, bits, isEquipped, isSingleSlotTaken, onClick, dev
       {/* Cost badge */}
       <div style={{
         marginTop: 6, textAlign: 'center',
-        fontFamily: 'JetBrains Mono, monospace', fontSize: 11,
+        fontFamily: 'JetBrains Mono, monospace', fontSize: 13,
         fontWeight: 700,
         color: canAfford || isEquipped ? '#fbbf24' : '#4a5060'
       }}>

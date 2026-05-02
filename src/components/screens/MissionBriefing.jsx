@@ -1,6 +1,16 @@
-import RadarChart from '../common/RadarChart';
 import { SCREENS } from '../../hooks/useGameState';
 import { ENVIRONMENTS } from '../../data/environments';
+
+const STAT_DISPLAY = {
+  precision: { icon: '🎯', label: 'Precision' },
+  strength: { icon: '💪', label: 'Strength' },
+  perception: { icon: '👁️', label: 'Perception' },
+  mobility: { icon: '🏃', label: 'Mobility' },
+  durability: { icon: '🛡️', label: 'Durability' },
+  adaptability: { icon: '🧠', label: 'Adaptability' },
+  communication: { icon: '📡', label: 'Communication' },
+  social: { icon: '🤝', label: 'Social' },
+};
 
 const CATEGORY_LABELS = {
   'social-interaction': 'Social Interaction',
@@ -153,21 +163,42 @@ export default function MissionBriefing({ state, goTo }) {
               )}
             </div>
 
-            {/* Radar chart + budget */}
+            {/* Top stats + budget */}
             <div>
-              {mission.requirements ? (
-                <div style={{ background: '#12172e', border: '1px solid #2a3060', borderRadius: 12, padding: 20, marginBottom: 16 }}>
-                  <h3 style={{
-                    fontFamily: 'JetBrains Mono, monospace', fontSize: 12, color: '#00b4ff',
-                    letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 16, marginTop: 0
-                  }}>
-                    Stat Requirements
-                  </h3>
-                  <div style={{ display: 'flex', justifyContent: 'center' }}>
-                    <RadarChart requirements={mission.requirements} size={220} />
+              {mission.requirements ? (() => {
+                const top3 = Object.entries(mission.requirements)
+                  .filter(([, v]) => v > 0)
+                  .sort(([, a], [, b]) => b - a)
+                  .slice(0, 3);
+                return (
+                  <div style={{ background: '#12172e', border: '1px solid #2a3060', borderRadius: 12, padding: 20, marginBottom: 16 }}>
+                    <h3 style={{
+                      fontFamily: 'JetBrains Mono, monospace', fontSize: 12, color: '#00b4ff',
+                      letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 16, marginTop: 0
+                    }}>
+                      This mission needs:
+                    </h3>
+                    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                      {top3.map(([stat]) => {
+                        const display = STAT_DISPLAY[stat] || { icon: '⚙️', label: stat };
+                        return (
+                          <div key={stat} style={{
+                            display: 'flex', alignItems: 'center', gap: 10,
+                            height: 60, padding: '0 20px',
+                            background: 'rgba(0,180,255,0.08)',
+                            border: '1px solid rgba(0,180,255,0.25)',
+                            borderRadius: 12,
+                            fontFamily: 'Space Grotesk, sans-serif',
+                          }}>
+                            <span style={{ fontSize: 28 }}>{display.icon}</span>
+                            <span style={{ fontSize: 15, fontWeight: 700, color: '#e8eaf6' }}>{display.label}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              ) : (
+                );
+              })() : (
                 <div style={{
                   background: '#12172e', border: '1px solid rgba(167,139,250,0.3)',
                   borderRadius: 12, padding: 20, marginBottom: 16,
